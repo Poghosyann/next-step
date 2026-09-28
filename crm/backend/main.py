@@ -1,0 +1,68 @@
+from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
+import models, schemas, crud
+from database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="CRM API")
+
+# Allow requests from the frontend SPA and landing page
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, restrict this!
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.post("/api/students", response_model=schemas.Student)
+def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
+    """Endpoint for landing page and CRM to create students"""
+    db_student = crud.get_student_by_email(db, email=student.email)
+    if db_student:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return crud.create_student(db=db, student=student)
+
+@app.get("/api/students", response_model=list[schemas.Student])
+def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_students(db, skip=skip, limit=limit)
+
+@app.delete("/api/students/{student_id}")
+def delete_student(student_id: int, db: Session = Depends(get_db)):
+    deleted = crud.delete_student(db, student_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return {"ok": True}
+
+@app.post("/api/courses", response_model=schemas.Course)
+def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
+    return crud.create_course(db=db, course=course)
+
+@app.get("/api/courses", response_model=list[schemas.Course])
+def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_courses(db, skip=skip, limit=limit)
+
+@app.post("/api/instructors", response_model=schemas.Instructor)
+def create_instructor(instructor: schemas.InstructorCreate, db: Session = Depends(get_db)):
+    return crud.create_instructor(db=db, instructor=instructor)
+
+@app.get("/api/instructors", response_model=list[schemas.Instructor])
+def read_instructors(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_instructors(db, skip=skip, limit=limit)
+
+@app.post("/api/groups", response_model=schemas.Group)
+def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db)):
+    return crud.create_group(db=db, group=group)
+
+@app.get("/api/groups", response_model=list[schemas.Group])
+def read_groups(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_groups(db, skip=skip, limit=limit)
+
+@app.post("/api/groups/{group_id}/students", response_model=schemas.Group)
+def add_students_to_group(group_id: int, request: schemas.GroupStudentAdd, db: Session = Depends(get_db)):
+    group = crud.add_students_to_group(db, group_id, request.student_ids)
+    if not group:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return group
