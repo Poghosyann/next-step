@@ -29,12 +29,28 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
 def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_students(db, skip=skip, limit=limit)
 
+@app.get("/api/students/{student_id}", response_model=schemas.Student)
+def read_student(student_id: int, db: Session = Depends(get_db)):
+    student = crud.get_student(db, student_id=student_id)
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    return student
+
 @app.delete("/api/students/{student_id}")
 def delete_student(student_id: int, db: Session = Depends(get_db)):
     deleted = crud.delete_student(db, student_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Student not found")
     return {"ok": True}
+
+@app.get("/api/payments", response_model=list[schemas.Payment])
+def read_payments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    return crud.get_payments(db, skip=skip, limit=limit)
+
+@app.post("/api/payments", response_model=schemas.Payment)
+def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
+    return crud.create_payment(db=db, payment=payment)
+
 
 @app.post("/api/courses", response_model=schemas.Course)
 def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):

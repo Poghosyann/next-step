@@ -52,7 +52,7 @@ class Student(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     groups = relationship("Group", secondary=group_student_table, back_populates="students")
-
+    payments = relationship("Payment", back_populates="student")
 
 class Group(Base):
     __tablename__ = "groups"
@@ -71,3 +71,15 @@ class Group(Base):
     course = relationship("Course", back_populates="groups")
     instructor = relationship("Instructor", back_populates="groups")
     students = relationship("Student", secondary=group_student_table, back_populates="groups")
+
+class Payment(Base):
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    student_id = Column(Integer, ForeignKey("students.id"))
+    amount = Column(Integer)
+    payment_date = Column(DateTime, default=datetime.datetime.utcnow)
+    method = Column(String)
+    notes = Column(String)
+
+    student = relationship("Student", back_populates="payments")

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { User, Plus, X } from 'lucide-react';
 
 const Students = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -67,7 +69,11 @@ const Students = () => {
             </thead>
             <tbody>
               {students.map((st) => (
-                <tr key={st.id} className="border-b border-white/5 hover:bg-white/5 transition">
+                <tr 
+                  key={st.id} 
+                  onClick={() => navigate(`/students/${st.id}`)}
+                  className="border-b border-white/5 hover:bg-white/10 transition cursor-pointer"
+                >
                   <td className="p-3">{st.full_name}</td>
                   <td className="p-3 text-brand">{st.course_direction}</td>
                   <td className="p-3">{st.phone}</td>

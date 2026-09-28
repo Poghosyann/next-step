@@ -58,6 +58,22 @@ class StudentCreate(StudentBase):
 class Student(StudentBase):
     id: int
     created_at: datetime
+    payments: List['Payment'] = []
+    class Config:
+        orm_mode = True
+
+class PaymentBase(BaseModel):
+    student_id: int
+    amount: int
+    method: Optional[str] = None
+    notes: Optional[str] = None
+
+class PaymentCreate(PaymentBase):
+    pass
+
+class Payment(PaymentBase):
+    id: int
+    payment_date: datetime
     class Config:
         orm_mode = True
 

@@ -1,14 +1,15 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Users, BookOpen, GraduationCap, Users2, Settings } from 'lucide-react';
+import { Home, Users, BookOpen, GraduationCap, Users2, CreditCard, Settings } from 'lucide-react';
 
 const Sidebar = () => {
   const links = [
-    { to: '/', label: 'Dashboard', icon: <Home size={20} /> },
-    { to: '/students', label: 'Students', icon: <Users size={20} /> },
-    { to: '/courses', label: 'Courses', icon: <BookOpen size={20} /> },
-    { to: '/instructors', label: 'Instructors', icon: <GraduationCap size={20} /> },
-    { to: '/groups', label: 'Groups', icon: <Users2 size={20} /> },
+    { to: '/', label: 'Գլխավոր', icon: <Home size={20} /> },
+    { to: '/students', label: 'Ուսանողներ', icon: <Users size={20} /> },
+    { to: '/groups', label: 'Խմբեր', icon: <Users2 size={20} /> },
+    { to: '/courses', label: 'Դասընթացներ', icon: <BookOpen size={20} /> },
+    { to: '/instructors', label: 'Դասախոսներ', icon: <GraduationCap size={20} /> },
+    { to: '/payments', label: 'Վճարումներ', icon: <CreditCard size={20} /> },
   ];
 
   return (

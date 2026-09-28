@@ -7,6 +7,9 @@ import models, schemas
 def get_student_by_email(db: Session, email: str):
     return db.query(models.Student).filter(models.Student.email == email).first()
 
+def get_student(db: Session, student_id: int):
+    return db.query(models.Student).filter(models.Student.id == student_id).first()
+
 def get_students(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.Student).offset(skip).limit(limit).all()
 
@@ -23,6 +26,19 @@ def delete_student(db: Session, student_id: int):
         db.delete(student)
         db.commit()
     return student
+
+# ============
+# Payments
+# ============
+def get_payments(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Payment).order_by(models.Payment.payment_date.desc()).offset(skip).limit(limit).all()
+
+def create_payment(db: Session, payment: schemas.PaymentCreate):
+    db_payment = models.Payment(**payment.dict())
+    db.add(db_payment)
+    db.commit()
+    db.refresh(db_payment)
+    return db_payment
 
 # ============
 # Courses
