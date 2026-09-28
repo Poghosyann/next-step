@@ -38,10 +38,19 @@ class Instructor(InstructorBase):
 # Student Schemas
 # =================
 class StudentBase(BaseModel):
-    first_name: str
-    last_name: str
-    email: EmailStr
+    full_name: str
+    course_direction: Optional[str] = None
+    course_format: Optional[str] = None
+    location: Optional[str] = None
+    status: Optional[str] = None
     phone: str
+    email: EmailStr
+    monthly_fee: Optional[int] = 0
+    discount_percent: Optional[int] = 0
+    gift_card: Optional[int] = 0
+    source: Optional[str] = None
+    comment: Optional[str] = None
+    urgent_notes: Optional[str] = None
 
 class StudentCreate(StudentBase):
     pass

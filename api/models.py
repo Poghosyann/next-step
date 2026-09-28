@@ -36,10 +36,19 @@ class Student(Base):
     __tablename__ = "students"
 
     id = Column(Integer, primary_key=True, index=True)
-    first_name = Column(String)
-    last_name = Column(String)
-    email = Column(String, unique=True, index=True)
+    full_name = Column(String)
+    course_direction = Column(String)
+    course_format = Column(String)
+    location = Column(String)
+    status = Column(String)
     phone = Column(String)
+    email = Column(String, unique=True, index=True)
+    monthly_fee = Column(Integer)
+    discount_percent = Column(Integer)
+    gift_card = Column(Integer)
+    source = Column(String)
+    comment = Column(String)
+    urgent_notes = Column(String)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     groups = relationship("Group", secondary=group_student_table, back_populates="students")

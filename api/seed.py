@@ -23,9 +23,9 @@ def seed():
         instructor2 = crud.create_instructor(db, schemas.InstructorCreate(first_name="John", last_name="Smith", phone="0987654321", specialization="FastAPI"))
         
         # Create Students
-        student1 = crud.create_student(db, schemas.StudentCreate(first_name="Alice", last_name="Johnson", email="alice@example.com", phone="1112223333"))
-        student2 = crud.create_student(db, schemas.StudentCreate(first_name="Bob", last_name="Williams", email="bob@example.com", phone="4445556666"))
-        student3 = crud.create_student(db, schemas.StudentCreate(first_name="Charlie", last_name="Brown", email="charlie@example.com", phone="7778889999"))
+        student1 = crud.create_student(db, schemas.StudentCreate(full_name="Alice Johnson", email="alice@example.com", phone="1112223333", course_direction="Python Web", status="Ընթացիկ", monthly_fee=95000))
+        student2 = crud.create_student(db, schemas.StudentCreate(full_name="Bob Williams", email="bob@example.com", phone="4445556666", course_direction="React Advanced", status="Ավարտած", monthly_fee=85000))
+        student3 = crud.create_student(db, schemas.StudentCreate(full_name="Charlie Brown", email="charlie@example.com", phone="7778889999", course_direction="FastAPI", status="Ընթացիկ", monthly_fee=95000))
         
         # Create Groups
         group1 = crud.create_group(db, schemas.GroupCreate(name="PY-101", course_id=course1.id, instructor_id=instructor1.id))
