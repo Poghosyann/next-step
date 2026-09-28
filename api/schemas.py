@@ -68,6 +68,11 @@ class GroupBase(BaseModel):
     name: str
     course_id: int
     instructor_id: Optional[int] = None
+    start_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    days: Optional[str] = None
+    notes: Optional[str] = None
 
 class GroupCreate(GroupBase):
     pass

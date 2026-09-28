@@ -61,6 +61,12 @@ class Group(Base):
     name = Column(String, index=True)
     course_id = Column(Integer, ForeignKey("courses.id"))
     instructor_id = Column(Integer, ForeignKey("instructors.id"))
+    
+    start_date = Column(String)
+    start_time = Column(String)
+    end_time = Column(String)
+    days = Column(String) # Comma separated like "Երկ., Չոր., Ուրբ."
+    notes = Column(String)
 
     course = relationship("Course", back_populates="groups")
     instructor = relationship("Instructor", back_populates="groups")
