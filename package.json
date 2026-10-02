@@ -2,7 +2,7 @@
   "name": "next-step-integrated",
   "version": "1.0.0",
   "scripts": {
-    "build": "mkdir -p public && cp index.html styles.css script.js logo.png public/ && cd crm/frontend && npm install --include=dev && npm run build && rm -rf ../../public/crm && cp -r dist ../../public/crm"
+    "build": "node build.js"
   },
   "dependencies": {}
 }
