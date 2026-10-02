@@ -23,6 +23,12 @@ try {
   if (fs.existsSync('logo.png')) fs.copyFileSync('logo.png', 'public/logo.png');
 
   console.log("Building React CRM...");
+  if (fs.existsSync(path.join(__dirname, 'crm', 'frontend', 'package-lock.json'))) {
+    fs.unlinkSync(path.join(__dirname, 'crm', 'frontend', 'package-lock.json'));
+  }
+  if (fs.existsSync(path.join(__dirname, 'crm', 'frontend', 'node_modules'))) {
+    fs.rmSync(path.join(__dirname, 'crm', 'frontend', 'node_modules'), { recursive: true, force: true });
+  }
   execSync('npm install --include=dev', { cwd: path.join(__dirname, 'crm', 'frontend'), stdio: 'inherit' });
   execSync('npm run build', { cwd: path.join(__dirname, 'crm', 'frontend'), stdio: 'inherit' });
 
