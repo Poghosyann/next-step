@@ -3,6 +3,12 @@ from sqlalchemy.orm import relationship
 from database import Base
 import datetime
 
+class Admin(Base):
+    __tablename__ = "admins"
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    password = Column(String)
+
 # Many-to-Many association table for Group <-> Student
 group_student_table = Table(
     'group_student', Base.metadata,

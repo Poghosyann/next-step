@@ -22,10 +22,29 @@ def seed():
         instructor1 = crud.create_instructor(db, schemas.InstructorCreate(first_name="Jane", last_name="Doe", phone="1234567890", specialization="Python"))
         instructor2 = crud.create_instructor(db, schemas.InstructorCreate(first_name="John", last_name="Smith", phone="0987654321", specialization="FastAPI"))
         
-        # Create Students
-        student1 = crud.create_student(db, schemas.StudentCreate(full_name="Alice Johnson", email="alice@example.com", phone="1112223333", course_direction="Python Web", status="Ընթացիկ", monthly_fee=95000))
-        student2 = crud.create_student(db, schemas.StudentCreate(full_name="Bob Williams", email="bob@example.com", phone="4445556666", course_direction="React Advanced", status="Ավարտած", monthly_fee=85000))
-        student3 = crud.create_student(db, schemas.StudentCreate(full_name="Charlie Brown", email="charlie@example.com", phone="7778889999", course_direction="FastAPI", status="Ընթացիկ", monthly_fee=95000))
+        # Create 10000 Students for scale testing
+        print("Creating 10,000 test students (this may take a minute)...")
+        new_students = []
+        for i in range(1, 10001):
+            new_students.append(models.Student(
+                full_name=f"Ուսանող {i}", 
+                email=f"student{i}@example.com", 
+                phone=f"+37477{str(i).zfill(6)}", 
+                course_direction="Python Web & ML Advanced" if i % 2 == 0 else "React Advanced",
+                status="Ընթացիկ ուսանող" if i % 3 == 0 else "Ավարտած",
+                monthly_fee=95000 if i % 2 == 0 else 85000
+            ))
+            
+            # Commit in batches of 1000 to save memory
+            if i % 1000 == 0:
+                db.bulk_save_objects(new_students)
+                db.commit()
+                new_students = []
+        
+        # Get a couple of students for groups
+        student1 = db.query(models.Student).filter(models.Student.email == "student1@example.com").first()
+        student2 = db.query(models.Student).filter(models.Student.email == "student2@example.com").first()
+        student3 = db.query(models.Student).filter(models.Student.email == "student3@example.com").first()
         
         # Create Groups
         group1 = crud.create_group(db, schemas.GroupCreate(name="PY-101", course_id=course1.id, instructor_id=instructor1.id))

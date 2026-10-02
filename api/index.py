@@ -3,8 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas, crud
 from database import engine, get_db
+import seed
 
 models.Base.metadata.create_all(bind=engine)
+# Seed the database automatically for testing on Vercel if empty
+seed.seed()
 
 app = FastAPI(title="CRM API")
 
@@ -17,6 +20,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.post("/api/login")
+def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
+    # Hardcoded test admin, in production check DB
+    if req.username == "admin" and req.password == "admin123":
+        return {"token": "fake-jwt-token-123"}
+    raise HTTPException(status_code=401, detail="Invalid credentials")
+
 @app.post("/api/students", response_model=schemas.Student)
 def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
     """Endpoint for landing page and CRM to create students"""
@@ -25,7 +35,7 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_student(db=db, student=student)
 
-@app.get("/api/students", response_model=list[schemas.Student])
+@app.get("/api/students", response_model=schemas.PaginatedResponse[schemas.Student])
 def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     return crud.get_students(db, skip=skip, limit=limit)
 

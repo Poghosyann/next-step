@@ -6,6 +6,10 @@ import { User, Plus, X } from 'lucide-react';
 const Students = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [page, setPage] = useState(1);
+  const limit = 50;
+
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '', course_direction: 'Python Web & ML Advanced', course_format: 'Առկա', 
@@ -16,8 +20,10 @@ const Students = () => {
 
   const fetchStudents = async () => {
     try {
-      const response = await api.get('/students');
-      setStudents(response.data);
+      const skip = (page - 1) * limit;
+      const response = await api.get(`/students?skip=${skip}&limit=${limit}`);
+      setStudents(response.data.items);
+      setTotalStudents(response.data.total);
     } catch (error) {
       console.error('Error fetching students:', error);
     }
@@ -25,7 +31,7 @@ const Students = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [page]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -86,6 +92,30 @@ const Students = () => {
               )}
             </tbody>
           </table>
+        </div>
+        
+        {/* Pagination UI */}
+        <div className="p-4 border-t border-white/10 flex justify-between items-center text-white/70">
+          <div>
+            Ընդհանուր՝ <span className="font-bold text-white">{totalStudents.toLocaleString()}</span> ուսանող
+          </div>
+          <div className="flex gap-2">
+            <button 
+              disabled={page === 1} 
+              onClick={() => setPage(page - 1)}
+              className="px-4 py-2 border border-white/20 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Նախորդը
+            </button>
+            <span className="px-4 py-2 text-white">Էջ {page} / {Math.ceil(totalStudents / limit) || 1}</span>
+            <button 
+              disabled={page >= Math.ceil(totalStudents / limit)} 
+              onClick={() => setPage(page + 1)}
+              className="px-4 py-2 border border-white/20 rounded hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              Հաջորդը
+            </button>
+          </div>
         </div>
       </div>
 

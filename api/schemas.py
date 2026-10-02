@@ -2,6 +2,10 @@ from pydantic import BaseModel, EmailStr
 from typing import List, Optional
 from datetime import datetime
 
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 # =================
 # Course Schemas
 # =================
@@ -76,6 +80,13 @@ class Payment(PaymentBase):
     payment_date: datetime
     class Config:
         orm_mode = True
+
+from typing import Generic, TypeVar
+T = TypeVar('T')
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    total: int
+    items: List[T]
 
 # =================
 # Group Schemas
