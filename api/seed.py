@@ -22,10 +22,10 @@ def seed():
         instructor1 = crud.create_instructor(db, schemas.InstructorCreate(first_name="Jane", last_name="Doe", phone="1234567890", specialization="Python"))
         instructor2 = crud.create_instructor(db, schemas.InstructorCreate(first_name="John", last_name="Smith", phone="0987654321", specialization="FastAPI"))
         
-        # Create 10000 Students for scale testing
-        print("Creating 10,000 test students (this may take a minute)...")
+        # Create 20 Students for scale testing
+        print("Creating 20 test students...")
         new_students = []
-        for i in range(1, 10001):
+        for i in range(1, 21):
             new_students.append(models.Student(
                 full_name=f"Ուսանող {i}", 
                 email=f"student{i}@example.com", 
@@ -35,8 +35,7 @@ def seed():
                 monthly_fee=95000 if i % 2 == 0 else 85000
             ))
             
-            # Commit in batches of 1000 to save memory
-            if i % 1000 == 0:
+            if i % 20 == 0:
                 db.bulk_save_objects(new_students)
                 db.commit()
                 new_students = []
