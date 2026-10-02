@@ -16,6 +16,10 @@ class CourseBase(BaseModel):
 class CourseCreate(CourseBase):
     pass
 
+class CourseUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
 class Course(CourseBase):
     id: int
     class Config:
@@ -32,6 +36,12 @@ class InstructorBase(BaseModel):
 
 class InstructorCreate(InstructorBase):
     pass
+
+class InstructorUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    specialization: Optional[str] = None
 
 class Instructor(InstructorBase):
     id: int
@@ -58,6 +68,21 @@ class StudentBase(BaseModel):
 
 class StudentCreate(StudentBase):
     pass
+
+class StudentUpdate(BaseModel):
+    full_name: Optional[str] = None
+    course_direction: Optional[str] = None
+    course_format: Optional[str] = None
+    location: Optional[str] = None
+    status: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[EmailStr] = None
+    monthly_fee: Optional[int] = None
+    discount_percent: Optional[int] = None
+    gift_card: Optional[int] = None
+    source: Optional[str] = None
+    comment: Optional[str] = None
+    urgent_notes: Optional[str] = None
 
 class Student(StudentBase):
     id: int
@@ -103,6 +128,16 @@ class GroupBase(BaseModel):
 
 class GroupCreate(GroupBase):
     pass
+
+class GroupUpdate(BaseModel):
+    name: Optional[str] = None
+    course_id: Optional[int] = None
+    instructor_id: Optional[int] = None
+    start_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    days: Optional[str] = None
+    notes: Optional[str] = None
 
 class Group(GroupBase):
     id: int

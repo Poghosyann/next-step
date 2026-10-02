@@ -22,6 +22,16 @@ def create_student(db: Session, student: schemas.StudentCreate):
     db.refresh(db_student)
     return db_student
 
+def update_student(db: Session, student_id: int, student: schemas.StudentUpdate):
+    db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if db_student:
+        update_data = student.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_student, key, value)
+        db.commit()
+        db.refresh(db_student)
+    return db_student
+
 def delete_student(db: Session, student_id: int):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
     if student:
@@ -55,6 +65,26 @@ def create_course(db: Session, course: schemas.CourseCreate):
     db.refresh(db_course)
     return db_course
 
+def get_course(db: Session, course_id: int):
+    return db.query(models.Course).filter(models.Course.id == course_id).first()
+
+def update_course(db: Session, course_id: int, course: schemas.CourseUpdate):
+    db_course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if db_course:
+        update_data = course.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_course, key, value)
+        db.commit()
+        db.refresh(db_course)
+    return db_course
+
+def delete_course(db: Session, course_id: int):
+    db_course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    if db_course:
+        db.delete(db_course)
+        db.commit()
+    return db_course
+
 # ============
 # Instructors
 # ============
@@ -66,6 +96,26 @@ def create_instructor(db: Session, instructor: schemas.InstructorCreate):
     db.add(db_instructor)
     db.commit()
     db.refresh(db_instructor)
+    return db_instructor
+
+def get_instructor(db: Session, instructor_id: int):
+    return db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+
+def update_instructor(db: Session, instructor_id: int, instructor: schemas.InstructorUpdate):
+    db_instructor = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+    if db_instructor:
+        update_data = instructor.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_instructor, key, value)
+        db.commit()
+        db.refresh(db_instructor)
+    return db_instructor
+
+def delete_instructor(db: Session, instructor_id: int):
+    db_instructor = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+    if db_instructor:
+        db.delete(db_instructor)
+        db.commit()
     return db_instructor
 
 # ============
@@ -82,6 +132,23 @@ def create_group(db: Session, group: schemas.GroupCreate):
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
+    return db_group
+
+def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
+    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if db_group:
+        update_data = group.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_group, key, value)
+        db.commit()
+        db.refresh(db_group)
+    return db_group
+
+def delete_group(db: Session, group_id: int):
+    db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if db_group:
+        db.delete(db_group)
+        db.commit()
     return db_group
 
 def add_students_to_group(db: Session, group_id: int, student_ids: list[int]):

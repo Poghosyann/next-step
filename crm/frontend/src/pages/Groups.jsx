@@ -1,61 +1,50 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { Users, Plus, X, Calendar, Clock } from 'lucide-react';
+import { X, Search, Trash2, Edit2, Plus } from 'lucide-react';
 
 const Groups = () => {
   const [groups, setGroups] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [courses, setCourses] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [students, setStudents] = useState([]);
   
-  const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    name: 'Ô½Õ¸Ö‚Õ´Õ¢ 1', // default name or let them type it, wait, the UI didn't have group name input in the image! It just had Instructor, Students, Schedule, Notes. I'll hide name or auto-generate it.
+    name: '',
+    course_id: '',
     instructor_id: '',
     start_date: '',
     start_time: '',
     end_time: '',
     notes: ''
   });
-  
+  const [selectedDays, setSelectedDays] = useState([]);
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [selectedDays, setSelectedDays] = useState(['ÔµÖ€Õ¯.', 'Õ‰Õ¸Ö€.', 'ÕˆÖ‚Ö€Õ¢.']);
-  const allDays = ['ÔµÖ€Õ¯.', 'ÔµÖ€Ö„.', 'Õ‰Õ¸Ö€.', 'Õ€Õ¶Õ£.', 'ÕˆÖ‚Ö€Õ¢.', 'Õ‡Õ¢Õ©.', 'Ô¿Õ«Ö€.'];
+
+  const allDays = ['Երկ', 'Երք', 'Չրք', 'Հնգ', 'Ուրբ', 'Շբթ', 'Կիր'];
+
+  const fetchData = async () => {
+    try {
+      const [grRes, crsRes, instRes, stuRes] = await Promise.all([
+        api.get('/groups'),
+        api.get('/courses'),
+        api.get('/instructors'),
+        api.get('/students?limit=1000')
+      ]);
+      setGroups(grRes.data);
+      setCourses(crsRes.data);
+      setInstructors(instRes.data);
+      setStudents(stuRes.data.items || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   useEffect(() => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    try {
-      const [gRes, iRes, sRes] = await Promise.all([
-        api.get('/groups'),
-        api.get('/instructors'),
-        api.get('/students')
-      ]);
-      setGroups(gRes.data);
-      setInstructors(iRes.data);
-      setStudents(sRes.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleStudentSelect = (e) => {
-    const studentId = parseInt(e.target.value);
-    if (studentId && !selectedStudents.find(s => s.id === studentId)) {
-      const st = students.find(s => s.id === studentId);
-      if (st) setSelectedStudents([...selectedStudents, st]);
-    }
-    e.target.value = "";
-  };
-
-  const removeStudent = (id) => {
-    setSelectedStudents(selectedStudents.filter(s => s.id !== id));
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const toggleDay = (day) => {
     if (selectedDays.includes(day)) {
@@ -65,32 +54,58 @@ const Groups = () => {
     }
   };
 
+  const handleStudentSelect = (e) => {
+    const studentId = parseInt(e.target.value);
+    if (!studentId) return;
+    const student = students.find(s => s.id === studentId);
+    if (student && !selectedStudents.find(s => s.id === studentId)) {
+      setSelectedStudents([...selectedStudents, student]);
+    }
+    e.target.value = '';
+  };
+
+  const removeStudent = (id) => {
+    setSelectedStudents(selectedStudents.filter(s => s.id !== id));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Create group
       const payload = {
         ...formData,
-        course_id: 1, // Just a default since course wasn't in UI
+        course_id: parseInt(formData.course_id),
+        instructor_id: parseInt(formData.instructor_id),
         days: selectedDays.join(', ')
       };
-      // In real scenario, the name might be input. We'll generate a random name if missing.
-      if (!payload.name) payload.name = `Ô½Õ¸Ö‚Õ´Õ¢ ${Math.floor(Math.random() * 1000)}`;
-
-      const groupRes = await api.post('/groups', payload);
+      const res = await api.post('/groups', payload);
       
-      // Add students
       if (selectedStudents.length > 0) {
-        await api.post(`/groups/${groupRes.data.id}/students`, {
+        await api.post(`/groups/${res.data.id}/students`, {
           student_ids: selectedStudents.map(s => s.id)
         });
       }
       
       setShowModal(false);
       fetchData();
-    } catch (error) {
-      console.error('Error creating group:', error);
-      alert('Error creating group');
+      // Reset form
+      setFormData({ name: '', course_id: '', instructor_id: '', start_date: '', start_time: '', end_time: '', notes: '' });
+      setSelectedDays([]);
+      setSelectedStudents([]);
+    } catch (err) {
+      console.error(err);
+      alert('Սխալ առաջացավ խումբը պահպանելիս:');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if(window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս խումբը։')) {
+      try {
+        await api.delete(`/groups/${id}`);
+        fetchData();
+      } catch (err) {
+        console.error(err);
+        alert('Սխալ ջնջելիս:');
+      }
     }
   };
 
@@ -98,38 +113,50 @@ const Groups = () => {
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Ô½Õ´Õ¢Õ¥Ö€</h1>
-          <p className="text-gray-500">Ô¿Õ¡Õ¼Õ¡Õ¾Õ¡Ö€Õ¥Ö„ Õ¸Ö‚Õ½Õ¸Ö‚Õ´Õ¶Õ¡Õ¯Õ¡Õ¶ Õ­Õ´Õ¢Õ¥Ö€Õ¨</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Խմբեր</h1>
+          <p className="text-gray-500">Կառավարեք ուսումնական խմբերը և դասացուցակները</p>
         </div>
         <button onClick={() => setShowModal(true)} className="glass-button flex items-center gap-2">
-          <Plus size={18} /> ÕÕ¿Õ¥Õ²Õ®Õ¥Õ¬ Õ­Õ¸Ö‚Õ´Õ¢
+          <Plus size={20} /> Նոր Խումբ
         </button>
       </div>
 
       <div className="glass-panel overflow-hidden">
-        <div className="p-4 border-b border-gray-200 overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-800">
-            <thead>
-              <tr className="border-b border-gray-200 text-gray-600">
-                <th className="p-3">Ô±Õ¶Õ¾Õ¡Õ¶Õ¸Ö‚Õ´</th>
-                <th className="p-3">Ô´Õ¡Õ½Õ¡Õ­Õ¸Õ½</th>
-                <th className="p-3">Õ•Ö€Õ¥Ö€</th>
-                <th className="p-3">ÔºÕ¡Õ´</th>
-                <th className="p-3">ÕˆÖ‚Õ½Õ¡Õ¶Õ¸Õ²Õ¶Õ¥Ö€</th>
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="p-4 font-bold text-gray-600">Անվանում</th>
+                <th className="p-4 font-bold text-gray-600">Դասընթաց</th>
+                <th className="p-4 font-bold text-gray-600">Դասախոս</th>
+                <th className="p-4 font-bold text-gray-600">Օրեր</th>
+                <th className="p-4 font-bold text-gray-600">Ժամեր</th>
+                <th className="p-4 font-bold text-gray-600">Ուսանողներ</th>
+                <th className="p-4 font-bold text-gray-600 text-right">Գործողություն</th>
               </tr>
             </thead>
             <tbody>
               {groups.map((gr) => (
-                <tr key={gr.id} className="border-b border-white/5 hover:bg-gray-50 transition">
-                  <td className="p-3 font-semibold">{gr.name}</td>
-                  <td className="p-3">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : '-'}</td>
-                  <td className="p-3 text-brand">{gr.days}</td>
-                  <td className="p-3">{gr.start_time} - {gr.end_time}</td>
-                  <td className="p-3">{gr.students?.length || 0} Õ°Õ¸Õ£Õ«</td>
+                <tr key={gr.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                  <td className="p-4 font-semibold">{gr.name}</td>
+                  <td className="p-4">{gr.course ? gr.course.title : '-'}</td>
+                  <td className="p-4">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : '-'}</td>
+                  <td className="p-4 text-brand font-medium">{gr.days}</td>
+                  <td className="p-4 text-gray-600">{gr.start_time} - {gr.end_time}</td>
+                  <td className="p-4">
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">
+                      {gr.students?.length || 0} ուսանող
+                    </span>
+                  </td>
+                  <td className="p-4 text-right flex justify-end gap-2">
+                    <button onClick={() => handleDelete(gr.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition">
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {groups.length === 0 && (
-                <tr><td colSpan="5" className="p-6 text-center text-gray-400">Ô½Õ´Õ¢Õ¥Ö€ Õ¹Õ¯Õ¡Õ¶</td></tr>
+                <tr><td colSpan="7" className="p-12 text-center text-gray-400">Խմբեր չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
@@ -137,45 +164,61 @@ const Groups = () => {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#f3f4f6] rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-5 border-b bg-white">
-              <h2 className="text-xl font-bold text-[#333d4e]">Õ†Õ¸Ö€ Ô½Õ¸Ö‚Õ´Õ¢</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-black">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-8">
+            <div className="flex justify-between items-center p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
+              <h2 className="text-xl font-bold text-gray-800">Նոր Խումբ</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-black transition">
                 <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
               
-              {/* Instructor Section */}
-              <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-                <label className="block text-sm font-bold text-[#333d4e] mb-3">Ô´Õ¡Õ½Õ¡Õ­Õ¸Õ½</label>
-                <select name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="w-[300px] border border-gray-200 rounded-md p-2.5 text-gray-600 focus:border-brand outline-none">
-                  <option value="">Ô¸Õ¶Õ¿Ö€Õ¥Õ¬</option>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Խմբի Անվանում</label>
+                  <input required type="text" name="name" value={formData.name} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ ՖՀ-101" />
+                </div>
+                
+                <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց</label>
+                  <select required name="course_id" value={formData.course_id} onChange={handleChange} className="glass-input w-full">
+                    <option value="">-- Ընտրել դասընթաց --</option>
+                    {courses.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                <label className="block text-sm font-bold text-gray-700 mb-3">Դասախոս</label>
+                <select required name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
+                  <option value="">-- Ընտրել դասախոս --</option>
                   {instructors.map(inst => (
                     <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Students Section */}
-              <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-                <div className="flex items-center gap-4 mb-3">
-                  <label className="block text-sm font-bold text-[#333d4e]">ÕˆÖ‚Õ½Õ¡Õ¶Õ¸Õ²Õ¶Õ¥Ö€</label>
-                  <select onChange={handleStudentSelect} className="border border-gray-200 rounded-md p-1.5 text-sm text-gray-600 outline-none">
-                    <option value="">+ Ô±Õ¾Õ¥Õ¬Õ¡ÖÕ¶Õ¥Õ¬ Õ¸Ö‚Õ½Õ¡Õ¶Õ¸Õ²</option>
+              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="block text-sm font-bold text-gray-700">Ուսանողներ</label>
+                  <select onChange={handleStudentSelect} className="glass-input text-sm py-1.5">
+                    <option value="">+ Ավելացնել ուսանող</option>
                     {students.map(st => (
                       <option key={st.id} value={st.id}>{st.full_name}</option>
                     ))}
                   </select>
                 </div>
                 
-                <div className="flex flex-wrap gap-2 p-3 min-h-[60px] border border-gray-100 rounded-md">
+                <div className="flex flex-wrap gap-2 p-3 min-h-[80px] bg-gray-50 border border-gray-200 rounded-md">
+                  {selectedStudents.length === 0 && <span className="text-gray-400 text-sm">Ուսանողներ ընտրված չեն...</span>}
                   {selectedStudents.map(st => (
-                    <div key={st.id} className="flex items-center gap-2 bg-[#f4b324] text-gray-800 px-3 py-1.5 rounded text-sm font-medium">
-                      {st.full_name} {st.course_direction ? `(${st.course_direction})` : ''}
-                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-black transition ml-1">
+                    <div key={st.id} className="flex items-center gap-2 bg-brand/20 border border-brand/30 text-gray-800 px-3 py-1.5 rounded-full text-sm font-medium">
+                      {st.full_name}
+                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1">
                         <X size={14} strokeWidth={3} />
                       </button>
                     </div>
@@ -183,32 +226,25 @@ const Groups = () => {
                 </div>
               </div>
 
-              {/* Schedule Section */}
-              <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-                <label className="block text-sm font-bold text-[#333d4e] mb-4">ÔºÕ¡Õ´Õ¡Õ¿Õ¡Õ­Õ¿Õ¡Õ¯</label>
+              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                <label className="block text-sm font-bold text-gray-700 mb-4">Ժամանակացույց</label>
                 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-2">Õ„Õ¥Õ¯Õ¶Õ¡Ö€Õ¯Õ« Õ¡Õ´Õ½Õ¡Õ©Õ«Õ¾</label>
-                    <div className="relative">
-                      <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="w-full border border-gray-200 rounded-md p-2.5 text-gray-600 focus:border-brand outline-none" />
-                    </div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2">Մեկնարկի ամսաթիվ</label>
+                    <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-2">ÕÕ¯Õ½Õ¾Õ¸Ö‚Õ´ Õ§ ( ÕªÕ¡Õ´ )</label>
-                    <div className="relative">
-                      <input type="time" name="start_time" value={formData.start_time} onChange={handleChange} className="w-full border border-gray-200 rounded-md p-2.5 text-gray-600 focus:border-brand outline-none" />
-                    </div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2">Սկիզբ (Ժամ)</label>
+                    <input type="time" name="start_time" value={formData.start_time} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-2">ÕŽÕ¥Ö€Õ»Õ¡Õ¶Õ¸Ö‚Õ´ Õ§ ( ÕªÕ¡Õ´ )</label>
-                    <div className="relative">
-                      <input type="time" name="end_time" value={formData.end_time} onChange={handleChange} className="w-full border border-gray-200 rounded-md p-2.5 text-gray-600 focus:border-brand outline-none" />
-                    </div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2">Ավարտ (Ժամ)</label>
+                    <input type="time" name="end_time" value={formData.end_time} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-2">Õ•Ö€Õ¥Ö€Õ¨</label>
-                    <div className="flex flex-wrap gap-2 border border-gray-200 rounded-md p-2 min-h-[46px] items-center">
+                    <label className="block text-xs font-bold text-gray-500 mb-2">Օրեր</label>
+                    <div className="flex flex-wrap gap-1">
                       {allDays.map(day => {
                         const isSelected = selectedDays.includes(day);
                         return (
@@ -216,11 +252,11 @@ const Groups = () => {
                             key={day}
                             type="button"
                             onClick={() => toggleDay(day)}
-                            className={`flex items-center gap-1 px-2.5 py-1 rounded text-sm font-medium transition ${
-                              isSelected ? 'bg-[#f4b324] text-gray-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            className={`px-2 py-1 rounded text-xs font-medium transition ${
+                              isSelected ? 'bg-brand text-black shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}
                           >
-                            {day} {isSelected && <X size={12} strokeWidth={4} />}
+                            {day}
                           </button>
                         );
                       })}
@@ -229,25 +265,12 @@ const Groups = () => {
                 </div>
               </div>
 
-              {/* Notes */}
-              <div className="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-                <textarea 
-                  name="notes" 
-                  value={formData.notes} 
-                  onChange={handleChange} 
-                  rows="3" 
-                  placeholder="Õ†Õ·Õ¸Ö‚Õ´Õ¶Õ¥Ö€" 
-                  className="w-full border border-gray-200 rounded-md p-3 text-gray-600 focus:border-brand outline-none resize-y"
-                ></textarea>
-              </div>
-
-              {/* Footer Buttons */}
-              <div className="flex justify-end gap-3 pt-2">
-                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 bg-white border border-gray-200 rounded-md text-gray-700 font-semibold hover:bg-gray-50 transition">
-                  Õ‰Õ¥Õ²Õ¡Ö€Õ¯Õ¥Õ¬
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition">
+                  Չեղարկել
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[#1e293b] hover:bg-[#0f172a] text-white rounded-md font-semibold transition">
-                  ÕŠÕ¡Õ°ÕºÕ¡Õ¶Õ¥Õ¬
+                <button type="submit" className="glass-button px-8">
+                  Պահպանել
                 </button>
               </div>
 
@@ -260,6 +283,3 @@ const Groups = () => {
 };
 
 export default Groups;
-
-
-

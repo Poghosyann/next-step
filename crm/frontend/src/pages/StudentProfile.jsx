@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { ArrowLeft, User, CreditCard } from 'lucide-react';
@@ -19,12 +19,12 @@ const StudentProfile = () => {
     fetchStudent();
   }, [id]);
 
-  if (!student) return <div className="p-8 text-gray-800">Ô²Õ¥Õ¼Õ¶Õ¸Ö‚Õ´...</div>;
+  if (!student) return <div className="p-8 text-gray-800">Բեռնում...</div>;
 
   return (
     <div className="p-8">
       <Link to="/students" className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition">
-        <ArrowLeft size={18} /> ÕŽÕ¥Ö€Õ¡Õ¤Õ¡Õ¼Õ¶Õ¡Õ¬ ÖÕ¡Õ¶Õ¯
+        <ArrowLeft size={18} /> Վերադառնալ ցանկ
       </Link>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -42,16 +42,16 @@ const StudentProfile = () => {
           
           <div className="space-y-4 text-gray-800/80 border-t border-gray-200 pt-4">
             <div>
-              <p className="text-xs text-gray-800/40 uppercase">Õ€Õ¥Õ¼Õ¡Õ­Õ¸Õ½</p>
+              <p className="text-xs text-gray-800/40 uppercase">Հեռախոս</p>
               <p>{student.phone}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-800/40 uppercase">Ô·Õ¬. ÖƒÕ¸Õ½Õ¿</p>
+              <p className="text-xs text-gray-800/40 uppercase">Էլ. փոստ</p>
               <p>{student.email}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-800/40 uppercase">Ô±Õ´Õ½Õ¡Õ¾Õ³Õ¡Ö€ / Ô¶Õ¥Õ²Õ¹</p>
-              <p>{student.monthly_fee?.toLocaleString()} Ö {student.discount_percent > 0 && <span className="text-brand">(-{student.discount_percent}%)</span>}</p>
+              <p className="text-xs text-gray-800/40 uppercase">Ամսավճար / Զեղչ</p>
+              <p>{student.monthly_fee?.toLocaleString()} ֏ {student.discount_percent > 0 && <span className="text-brand">(-{student.discount_percent}%)</span>}</p>
             </div>
           </div>
         </div>
@@ -60,7 +60,7 @@ const StudentProfile = () => {
         <div className="col-span-1 md:col-span-2 glass-panel p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-6">
             <CreditCard className="text-brand" />
-            <h3 className="text-xl font-bold text-gray-800">ÕŽÕ³Õ¡Ö€Õ¸Ö‚Õ´Õ¶Õ¥Ö€Õ« ÕºÕ¡Õ¿Õ´Õ¸Ö‚Õ©ÕµÕ¸Ö‚Õ¶</h3>
+            <h3 className="text-xl font-bold text-gray-800">Վճարումների պատմություն</h3>
           </div>
           
           {student.payments && student.payments.length > 0 ? (
@@ -68,17 +68,17 @@ const StudentProfile = () => {
               <table className="w-full text-left text-gray-800">
                 <thead>
                   <tr className="border-b border-gray-200 text-gray-800/40 text-sm">
-                    <th className="pb-3 font-normal">Ô±Õ´Õ½Õ¡Õ©Õ«Õ¾</th>
-                    <th className="pb-3 font-normal">Ô³Õ¸Ö‚Õ´Õ¡Ö€</th>
-                    <th className="pb-3 font-normal">ÔµÕ²Õ¡Õ¶Õ¡Õ¯</th>
-                    <th className="pb-3 font-normal">Õ†Õ·Õ¸Ö‚Õ´Õ¶Õ¥Ö€</th>
+                    <th className="pb-3 font-normal">Ամսաթիվ</th>
+                    <th className="pb-3 font-normal">Գումար</th>
+                    <th className="pb-3 font-normal">Եղանակ</th>
+                    <th className="pb-3 font-normal">Նշումներ</th>
                   </tr>
                 </thead>
                 <tbody>
                   {student.payments.map(pay => (
-                    <tr key={pay.id} className="border-b border-white/5 last:border-0 hover:bg-gray-50">
+                    <tr key={pay.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                       <td className="py-3">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
-                      <td className="py-3 text-green-400 font-bold">{pay.amount.toLocaleString()} Ö</td>
+                      <td className="py-3 text-green-400 font-bold">{pay.amount.toLocaleString()} ֏</td>
                       <td className="py-3">{pay.method}</td>
                       <td className="py-3 text-gray-400 text-sm">{pay.notes}</td>
                     </tr>
@@ -88,7 +88,7 @@ const StudentProfile = () => {
             </div>
           ) : (
             <div className="flex-1 flex items-center justify-center text-gray-800/40">
-              Ô±ÕµÕ½ Õ¸Ö‚Õ½Õ¡Õ¶Õ¸Õ²Õ¨ Õ¤Õ¥Õ¼ Õ¾Õ³Õ¡Ö€Õ¸Ö‚Õ´Õ¶Õ¥Ö€ Õ¹Õ¸Ö‚Õ¶Õ«
+              Այս ուսանողը դեռ վճարումներ չունի
             </div>
           )}
         </div>
@@ -98,6 +98,3 @@ const StudentProfile = () => {
 };
 
 export default StudentProfile;
-
-
-
