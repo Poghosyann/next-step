@@ -74,10 +74,7 @@ const StudentProfile = () => {
         
         {/* Profile Card */}
         <div className="col-span-1 glass-panel p-6">
-          <div className="flex flex-col items-center mb-6">
-            <div className="w-24 h-24 bg-brand/10 rounded-full flex items-center justify-center mb-4 border-2 border-brand/50 text-brand">
-              <User size={40} />
-            </div>
+          <div className="flex flex-col items-center mb-6 pt-4">
             <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
             <p className="text-brand font-bold text-center mt-1">{student.course_direction}</p>
             <span className="mt-3 px-4 py-1.5 bg-gray-100 rounded-full text-sm font-semibold text-gray-600 border border-gray-200">

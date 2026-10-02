@@ -55,9 +55,6 @@ const Instructors = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {instructors.map((instructor) => (
           <div key={instructor.id} className="glass-panel p-6 flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-brand/10 text-brand rounded-full flex items-center justify-center text-2xl font-bold mb-4">
-              {instructor.first_name[0]}{instructor.last_name[0]}
-            </div>
             <h3 className="text-xl font-semibold mb-1 text-gray-800">{instructor.first_name} {instructor.last_name}</h3>
             <p className="text-gray-500 text-sm mb-4">{instructor.specialization}</p>
             <div className="flex items-center gap-2 text-sm text-gray-600 mb-6 bg-gray-50 px-3 py-1.5 rounded-full">

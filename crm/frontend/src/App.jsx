@@ -8,9 +8,11 @@ import Instructors from './pages/Instructors';
 import Groups from './pages/Groups';
 import Payments from './pages/Payments';
 import StudentProfile from './pages/StudentProfile';
+import Settings from './pages/Settings';
 import Login from './pages/Login';
 
 function App() {
+
   const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
@@ -43,6 +45,7 @@ function App() {
             <Route path="/instructors" element={<Instructors />} />
             <Route path="/groups" element={<Groups />} />
             <Route path="/payments" element={<Payments />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>

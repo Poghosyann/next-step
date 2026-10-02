@@ -40,10 +40,19 @@ const Sidebar = () => {
       </nav>
 
       <div className="p-4 border-t border-gray-100">
-        <button className="flex items-center gap-3 px-4 py-3 w-full text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
+              isActive 
+                ? 'bg-brand/10 text-brand border border-brand/20 font-bold' 
+                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+            }`
+          }
+        >
           <Settings size={20} />
           <span className="font-medium">Կարգավորումներ</span>
-        </button>
+        </NavLink>
       </div>
     </div>
   );
