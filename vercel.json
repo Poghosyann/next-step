@@ -18,13 +18,10 @@
       "src": "/api/(.*)",
       "dest": "/api/index.py"
     },
+    { "handle": "filesystem" },
     {
       "src": "/crm/(.*)",
       "dest": "/crm/index.html"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
     }
   ]
 }
