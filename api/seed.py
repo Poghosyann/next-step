@@ -15,12 +15,12 @@ def seed():
         print("Seeding database...")
         
         # Create Courses
-        course1 = crud.create_course(db, schemas.CourseCreate(title="Python for Beginners", description="Learn Python from scratch"))
-        course2 = crud.create_course(db, schemas.CourseCreate(title="Advanced FastAPI", description="Build robust APIs"))
+        course1 = crud.create_course(db, schemas.CourseCreate(title="Ֆինանսական հաշվառում", description="Հաշվապահության հիմունքներ"))
+        course2 = crud.create_course(db, schemas.CourseCreate(title="Հարկային հաշվառում", description="ՀՀ հարկային օրենսդրություն"))
         
         # Create Instructors
-        instructor1 = crud.create_instructor(db, schemas.InstructorCreate(first_name="Jane", last_name="Doe", phone="1234567890", specialization="Python"))
-        instructor2 = crud.create_instructor(db, schemas.InstructorCreate(first_name="John", last_name="Smith", phone="0987654321", specialization="FastAPI"))
+        instructor1 = crud.create_instructor(db, schemas.InstructorCreate(first_name="Անահիտ", last_name="Գրիգորյան", phone="+37444000000", specialization="Ֆինանսական հաշվառում"))
+        instructor2 = crud.create_instructor(db, schemas.InstructorCreate(first_name="Արմեն", last_name="Պետրոսյան", phone="+37499000000", specialization="Հարկային հաշվառում"))
         
         # Create 20 Students for scale testing
         print("Creating 20 test students...")
@@ -30,7 +30,7 @@ def seed():
                 full_name=f"Ուսանող {i}", 
                 email=f"student{i}@example.com", 
                 phone=f"+37477{str(i).zfill(6)}", 
-                course_direction="Python Web & ML Advanced" if i % 2 == 0 else "React Advanced",
+                course_direction="Ֆինանսական հաշվառում" if i % 2 == 0 else "Հարկային հաշվառում",
                 status="Ընթացիկ ուսանող" if i % 3 == 0 else "Ավարտած",
                 monthly_fee=95000 if i % 2 == 0 else 85000
             ))
@@ -46,8 +46,8 @@ def seed():
         student3 = db.query(models.Student).filter(models.Student.email == "student3@example.com").first()
         
         # Create Groups
-        group1 = crud.create_group(db, schemas.GroupCreate(name="PY-101", course_id=course1.id, instructor_id=instructor1.id))
-        group2 = crud.create_group(db, schemas.GroupCreate(name="FAST-201", course_id=course2.id, instructor_id=instructor2.id))
+        group1 = crud.create_group(db, schemas.GroupCreate(name="ՖՀ-101", course_id=course1.id, instructor_id=instructor1.id))
+        group2 = crud.create_group(db, schemas.GroupCreate(name="ՀՀ-201", course_id=course2.id, instructor_id=instructor2.id))
         
         # Add Students to Groups
         crud.add_students_to_group(db, group1.id, [student1.id, student2.id])

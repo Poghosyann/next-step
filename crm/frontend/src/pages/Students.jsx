@@ -134,9 +134,10 @@ const Students = () => {
                 <div>
                   <label className="block text-sm font-bold text-[#1f2937] mb-2">Դասընթացի ուղղություն</label>
                   <select name="course_direction" value={formData.course_direction} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand focus:ring-1 focus:ring-brand outline-none">
-                    <option>Python Web & ML Advanced</option>
-                    <option>React Advanced</option>
-                    <option>UI/UX Design</option>
+                    <option>Ֆինանսական հաշվառում</option>
+                    <option>Հարկային հաշվառում</option>
+                    <option>1C Օպերատոր</option>
+                    <option>1C Հաշվապահ</option>
                   </select>
                 </div>
                 <div>
@@ -165,15 +166,15 @@ const Students = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-gray-100">
                 <div>
                   <label className="block text-sm font-bold text-[#1f2937] mb-2">Անուն Ազգանուն</label>
-                  <input required name="full_name" value={formData.full_name} onChange={handleChange} type="text" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="Օր.՝ Տրո Մանջիկյան..." />
+                  <input required name="full_name" value={formData.full_name} onChange={handleChange} type="text" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="Անուն Ազգանուն" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[#1f2937] mb-2">Հեռախոսահամար</label>
-                  <input required name="phone" value={formData.phone} onChange={handleChange} type="text" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="+ (374) 77 788-628" />
+                  <input required name="phone" value={formData.phone} onChange={handleChange} type="text" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="+374 __ __ __ __" />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-[#1f2937] mb-2">Էլ. փոստ</label>
-                  <input required name="email" value={formData.email} onChange={handleChange} type="email" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="example@gmail.com" />
+                  <input required name="email" value={formData.email} onChange={handleChange} type="email" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="էլ. փոստ" />
                 </div>
               </div>
 
