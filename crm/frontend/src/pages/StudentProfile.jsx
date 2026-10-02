@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 import { ArrowLeft, User, CreditCard } from 'lucide-react';
@@ -19,12 +19,12 @@ const StudentProfile = () => {
     fetchStudent();
   }, [id]);
 
-  if (!student) return <div className="p-8 text-white">Բեռնում...</div>;
+  if (!student) return <div className="p-8 text-gray-800">Ô²Õ¥Õ¼Õ¶Õ¸Ö‚Õ´...</div>;
 
   return (
     <div className="p-8">
-      <Link to="/students" className="flex items-center gap-2 text-white/60 hover:text-white mb-6 transition">
-        <ArrowLeft size={18} /> Վերադառնալ ցանկ
+      <Link to="/students" className="flex items-center gap-2 text-gray-500 hover:text-gray-800 mb-6 transition">
+        <ArrowLeft size={18} /> ÕŽÕ¥Ö€Õ¡Õ¤Õ¡Õ¼Õ¶Õ¡Õ¬ ÖÕ¡Õ¶Õ¯
       </Link>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -35,23 +35,23 @@ const StudentProfile = () => {
             <div className="w-24 h-24 bg-brand/20 rounded-full flex items-center justify-center mb-4 border-2 border-brand text-brand">
               <User size={40} />
             </div>
-            <h2 className="text-2xl font-bold text-white">{student.full_name}</h2>
+            <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
             <p className="text-brand font-medium">{student.course_direction}</p>
-            <span className="mt-2 px-3 py-1 bg-white/10 rounded-full text-sm text-white/80">{student.status}</span>
+            <span className="mt-2 px-3 py-1 bg-white/10 rounded-full text-sm text-gray-800/80">{student.status}</span>
           </div>
           
-          <div className="space-y-4 text-white/80 border-t border-white/10 pt-4">
+          <div className="space-y-4 text-gray-800/80 border-t border-gray-200 pt-4">
             <div>
-              <p className="text-xs text-white/40 uppercase">Հեռախոս</p>
+              <p className="text-xs text-gray-800/40 uppercase">Õ€Õ¥Õ¼Õ¡Õ­Õ¸Õ½</p>
               <p>{student.phone}</p>
             </div>
             <div>
-              <p className="text-xs text-white/40 uppercase">Էլ. փոստ</p>
+              <p className="text-xs text-gray-800/40 uppercase">Ô·Õ¬. ÖƒÕ¸Õ½Õ¿</p>
               <p>{student.email}</p>
             </div>
             <div>
-              <p className="text-xs text-white/40 uppercase">Ամսավճար / Զեղչ</p>
-              <p>{student.monthly_fee?.toLocaleString()} ֏ {student.discount_percent > 0 && <span className="text-brand">(-{student.discount_percent}%)</span>}</p>
+              <p className="text-xs text-gray-800/40 uppercase">Ô±Õ´Õ½Õ¡Õ¾Õ³Õ¡Ö€ / Ô¶Õ¥Õ²Õ¹</p>
+              <p>{student.monthly_fee?.toLocaleString()} Ö {student.discount_percent > 0 && <span className="text-brand">(-{student.discount_percent}%)</span>}</p>
             </div>
           </div>
         </div>
@@ -60,35 +60,35 @@ const StudentProfile = () => {
         <div className="col-span-1 md:col-span-2 glass-panel p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-6">
             <CreditCard className="text-brand" />
-            <h3 className="text-xl font-bold text-white">Վճարումների պատմություն</h3>
+            <h3 className="text-xl font-bold text-gray-800">ÕŽÕ³Õ¡Ö€Õ¸Ö‚Õ´Õ¶Õ¥Ö€Õ« ÕºÕ¡Õ¿Õ´Õ¸Ö‚Õ©ÕµÕ¸Ö‚Õ¶</h3>
           </div>
           
           {student.payments && student.payments.length > 0 ? (
             <div className="flex-1 overflow-auto">
-              <table className="w-full text-left text-white">
+              <table className="w-full text-left text-gray-800">
                 <thead>
-                  <tr className="border-b border-white/10 text-white/40 text-sm">
-                    <th className="pb-3 font-normal">Ամսաթիվ</th>
-                    <th className="pb-3 font-normal">Գումար</th>
-                    <th className="pb-3 font-normal">Եղանակ</th>
-                    <th className="pb-3 font-normal">Նշումներ</th>
+                  <tr className="border-b border-gray-200 text-gray-800/40 text-sm">
+                    <th className="pb-3 font-normal">Ô±Õ´Õ½Õ¡Õ©Õ«Õ¾</th>
+                    <th className="pb-3 font-normal">Ô³Õ¸Ö‚Õ´Õ¡Ö€</th>
+                    <th className="pb-3 font-normal">ÔµÕ²Õ¡Õ¶Õ¡Õ¯</th>
+                    <th className="pb-3 font-normal">Õ†Õ·Õ¸Ö‚Õ´Õ¶Õ¥Ö€</th>
                   </tr>
                 </thead>
                 <tbody>
                   {student.payments.map(pay => (
-                    <tr key={pay.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
+                    <tr key={pay.id} className="border-b border-white/5 last:border-0 hover:bg-gray-50">
                       <td className="py-3">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
-                      <td className="py-3 text-green-400 font-bold">{pay.amount.toLocaleString()} ֏</td>
+                      <td className="py-3 text-green-400 font-bold">{pay.amount.toLocaleString()} Ö</td>
                       <td className="py-3">{pay.method}</td>
-                      <td className="py-3 text-white/50 text-sm">{pay.notes}</td>
+                      <td className="py-3 text-gray-400 text-sm">{pay.notes}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-white/40">
-              Այս ուսանողը դեռ վճարումներ չունի
+            <div className="flex-1 flex items-center justify-center text-gray-800/40">
+              Ô±ÕµÕ½ Õ¸Ö‚Õ½Õ¡Õ¶Õ¸Õ²Õ¨ Õ¤Õ¥Õ¼ Õ¾Õ³Õ¡Ö€Õ¸Ö‚Õ´Õ¶Õ¥Ö€ Õ¹Õ¸Ö‚Õ¶Õ«
             </div>
           )}
         </div>
@@ -98,3 +98,6 @@ const StudentProfile = () => {
 };
 
 export default StudentProfile;
+
+
+

@@ -4,20 +4,20 @@
 
 @layer components {
   .glass-panel {
-    @apply bg-black/40 backdrop-blur-md border border-white/10 rounded-xl shadow-xl text-white;
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm text-gray-800;
   }
   .glass-input {
-    @apply bg-white/5 border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-brand transition-colors placeholder-white/50;
+    @apply bg-white border border-gray-300 text-gray-800 rounded-lg px-4 py-2 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand transition-colors placeholder-gray-400;
   }
   .glass-button {
-    @apply bg-brand/90 hover:bg-brand text-black font-semibold py-2 px-4 rounded-lg transition-colors duration-200 shadow-[0_0_15px_rgba(243,176,27,0.3)] hover:shadow-[0_0_20px_rgba(243,176,27,0.5)];
+    @apply bg-brand/90 hover:bg-brand text-black font-semibold py-2 px-4 rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg;
   }
 }
 
 body {
   margin: 0;
-  background: linear-gradient(135deg, #111111, #1a1a1a);
-  color: white;
+  background: #f9fafb; /* light gray background */
+  color: #1f2937;
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }

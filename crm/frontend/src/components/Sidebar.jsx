@@ -13,10 +13,10 @@ const Sidebar = () => {
   ];
 
   return (
-    <div className="w-64 min-h-screen glass-panel rounded-none border-y-0 border-l-0 flex flex-col">
-      <div className="p-6 border-b border-white/10">
-        <h1 className="text-2xl font-bold text-brand flex items-center gap-2">
-          <span className="bg-brand text-black p-1 rounded">CRM</span> System
+    <div className="w-64 min-h-screen bg-white border-r border-gray-200 flex flex-col shadow-sm">
+      <div className="p-6 border-b border-gray-100">
+        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <span className="bg-brand text-black p-1 rounded">CRM</span>
         </h1>
       </div>
       
@@ -28,8 +28,8 @@ const Sidebar = () => {
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ${
                 isActive 
-                  ? 'bg-brand/20 text-brand border border-brand/50' 
-                  : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  ? 'bg-brand/10 text-brand border border-brand/20 font-bold' 
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`
             }
           >
@@ -39,10 +39,10 @@ const Sidebar = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-white/10">
-        <button className="flex items-center gap-3 px-4 py-3 w-full text-white/70 hover:bg-white/5 hover:text-white rounded-lg transition-colors">
+      <div className="p-4 border-t border-gray-100">
+        <button className="flex items-center gap-3 px-4 py-3 w-full text-gray-600 hover:bg-gray-50 hover:text-gray-900 rounded-lg transition-colors">
           <Settings size={20} />
-          <span className="font-medium">Settings</span>
+          <span className="font-medium">Կարգավորումներ</span>
         </button>
       </div>
     </div>
