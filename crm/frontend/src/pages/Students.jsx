@@ -12,8 +12,8 @@ const Students = () => {
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: '', course_direction: 'Python Web & ML Advanced', course_format: 'Առկա', 
-    location: 'Հակոբ Հակոբյան 3/17', status: 'Ընթացիկ ուսանող', phone: '', email: '', 
+    full_name: '', course_direction: 'Ֆինանսական հաշվառում', course_format: 'Օֆլայն', 
+    location: '', status: 'Նոր հայտ', phone: '', email: '', 
     monthly_fee: 95000, discount_percent: 0, gift_card: 0, source: 'Instagram', 
     comment: '', urgent_notes: ''
   });
@@ -45,7 +45,7 @@ const Students = () => {
       fetchStudents();
     } catch (error) {
       console.error('Error creating student:', error);
-      alert('Error creating student');
+      alert('Սխալ առաջացավ ուսանողին պահպանելիս:');
     }
   };
 
@@ -69,7 +69,7 @@ const Students = () => {
                 <th className="p-3">Անուն Ազգանուն</th>
                 <th className="p-3">Ուղղություն</th>
                 <th className="p-3">Հեռախոս</th>
-                <th className="p-3">Էլ. փոստ</th>
+                <th className="p-3">Էլ. հասցե</th>
                 <th className="p-3">Կարգավիճակ</th>
               </tr>
             </thead>
@@ -78,147 +78,138 @@ const Students = () => {
                 <tr 
                   key={st.id} 
                   onClick={() => navigate(`/students/${st.id}`)}
-                  className="border-b border-gray-100 hover:bg-gray-100 transition cursor-pointer"
+                  className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
                 >
-                  <td className="p-3">{st.full_name}</td>
-                  <td className="p-3 text-brand">{st.course_direction}</td>
+                  <td className="p-3 font-medium">{st.full_name}</td>
+                  <td className="p-3 text-brand font-semibold">{st.course_direction}</td>
                   <td className="p-3">{st.phone}</td>
                   <td className="p-3">{st.email}</td>
-                  <td className="p-3">{st.status}</td>
+                  <td className="p-3">
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
+                      {st.status}
+                    </span>
+                  </td>
                 </tr>
               ))}
               {students.length === 0 && (
-                <tr><td colSpan="5" className="p-6 text-center text-gray-400">Ուսանողներ չկան</td></tr>
+                <tr><td colSpan="5" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
         </div>
         
         {/* Pagination UI */}
-        <div className="p-4 border-t border-gray-200 flex justify-between items-center text-gray-600">
+        <div className="p-4 border-t border-gray-100 flex justify-between items-center text-gray-600 bg-gray-50">
           <div>
-            Ընդհանուր՝ <span className="font-bold text-gray-800">{totalStudents.toLocaleString()}</span> ուսանող
+            Ընդհանուր <span className="font-bold text-gray-800">{totalStudents.toLocaleString()}</span> ուսանող
           </div>
           <div className="flex gap-2">
             <button 
               disabled={page === 1} 
-              onClick={() => setPage(page - 1)}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              onClick={() => setPage(p => p - 1)}
+              className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
             >
-              Նախորդը
+              Նախորդ
             </button>
-            <span className="px-4 py-2 text-gray-800">Էջ {page} / {Math.ceil(totalStudents / limit) || 1}</span>
+            <span className="px-4 py-2 text-gray-800 font-medium">Էջ {page} / {Math.ceil(totalStudents / limit) || 1}</span>
             <button 
-              disabled={page >= Math.ceil(totalStudents / limit)} 
-              onClick={() => setPage(page + 1)}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              disabled={page >= Math.ceil(totalStudents / limit)}
+              onClick={() => setPage(p => p + 1)}
+              className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
             >
-              Հաջորդը
+              Հաջորդ
             </button>
           </div>
         </div>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-[#fcfcfc] rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="flex justify-between items-center p-5 border-b">
-              <h2 className="text-xl font-bold text-gray-800">Նոր ուսանող</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-black">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-8">
+            <div className="flex justify-between items-center p-5 border-b border-gray-100 sticky top-0 z-10 bg-white">
+              <h2 className="text-xl font-bold text-gray-800">Նոր Ուսանող</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-black">
                 <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto flex-1 bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Դասընթացի ուղղություն</label>
-                  <select name="course_direction" value={formData.course_direction} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand focus:ring-1 focus:ring-brand outline-none">
-                    <option>Ֆինանսական հաշվառում</option>
-                    <option>Հարկային հաշվառում</option>
-                    <option>1C Օպերատոր</option>
-                    <option>1C Հաշվապահ</option>
-                  </select>
+            <form onSubmit={handleSubmit} className="p-6">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                
+                {/* 1. Personal Details */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-100 pb-1">Անձնական Տվյալներ</h3>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Անուն Ազգանուն *</label>
+                    <input required type="text" name="full_name" value={formData.full_name} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ Անուն Ազգանուն" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Հեռախոսահամար *</label>
+                    <input required type="text" name="phone" value={formData.phone} onChange={handleChange} className="glass-input w-full" placeholder="+374 __ __ __ __" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Էլ. Հասցե</label>
+                    <input type="email" name="email" value={formData.email} onChange={handleChange} className="glass-input w-full" placeholder="email@example.com" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Դասընթացի ձևաչափ</label>
-                  <select name="course_format" value={formData.course_format} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand focus:ring-1 focus:ring-brand outline-none">
-                    <option>Առկա</option>
-                    <option>Առցանց</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Մասնաշենք</label>
-                  <select name="location" value={formData.location} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand focus:ring-1 focus:ring-brand outline-none">
-                    <option>Հակոբ Հակոբյան 3/17</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Կարգավիճակ</label>
-                  <select name="status" value={formData.status} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand focus:ring-1 focus:ring-brand outline-none">
-                    <option>Ընթացիկ ուսանող</option>
-                    <option>Ավարտած</option>
-                    <option>Հեռացված</option>
-                  </select>
+
+                {/* 2. Course Details */}
+                <div className="space-y-4">
+                  <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-100 pb-1">Դասընթացի Մանրամասներ</h3>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Ուղղություն *</label>
+                    <select name="course_direction" value={formData.course_direction} onChange={handleChange} className="glass-input w-full">
+                      <option>Ֆինանսական հաշվառում</option>
+                      <option>Հարկային հաշվառում</option>
+                      <option>1C ՀԾ ծրագրեր</option>
+                      <option>Գլխավոր հաշվապահի դասընթաց</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
+                    <select name="status" value={formData.status} onChange={handleChange} className="glass-input w-full">
+                      <option>Նոր հայտ / Կապ հաստատված</option>
+                      <option>Պոտենցիալ Ուսանող</option>
+                      <option>Սովորող</option>
+                      <option>Ավարտած</option>
+                      <option>Հեռացված</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 pb-6 border-b border-gray-100">
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Անուն Ազգանուն</label>
-                  <input required name="full_name" value={formData.full_name} onChange={handleChange} type="text" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="Անուն Ազգանուն" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Հեռախոսահամար</label>
-                  <input required name="phone" value={formData.phone} onChange={handleChange} type="text" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="+374 __ __ __ __" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Էլ. փոստ</label>
-                  <input required name="email" value={formData.email} onChange={handleChange} type="email" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" placeholder="էլ. փոստ" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Ամսավճար</label>
-                  <input name="monthly_fee" value={formData.monthly_fee} onChange={handleChange} type="number" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Զեղչ %</label>
-                  <input name="discount_percent" value={formData.discount_percent} onChange={handleChange} type="number" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Նվեր քարտ</label>
-                  <input name="gift_card" value={formData.gift_card} onChange={handleChange} type="number" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none" />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-[#1f2937] mb-2">Տեղեկացել է</label>
-                  <select name="source" value={formData.source} onChange={handleChange} className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand focus:ring-1 focus:ring-brand outline-none">
-                    <option>Instagram</option>
-                    <option>Facebook</option>
-                    <option>Ընկերոջից</option>
-                  </select>
-                </div>
-              </div>
-
+              {/* 3. Financials */}
               <div className="mb-6">
-                <label className="block text-sm font-bold text-[#1f2937] mb-2">Մեկնաբանություն</label>
-                <textarea name="comment" value={formData.comment} onChange={handleChange} rows="3" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none resize-y" placeholder="Մեկնաբանություն"></textarea>
+                <h3 className="font-bold text-brand uppercase text-sm mb-3 border-b border-gray-100 pb-1">Ֆինանսներ</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար (AMD) *</label>
+                    <input required type="number" name="monthly_fee" value={formData.monthly_fee} onChange={handleChange} className="glass-input w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Զեղչ (%)</label>
+                    <input type="number" name="discount_percent" value={formData.discount_percent} onChange={handleChange} className="glass-input w-full" />
+                  </div>
+                </div>
               </div>
 
-              <div className="mb-8">
-                <label className="block text-sm font-bold text-[#1f2937] mb-2">Նշումներ (հրատապ)</label>
-                <textarea name="urgent_notes" value={formData.urgent_notes} onChange={handleChange} rows="2" className="w-full border border-gray-300 rounded-md p-2.5 text-gray-700 focus:border-brand outline-none resize-y" placeholder="Նշումներ"></textarea>
+              {/* 4. Notes */}
+              <div>
+                <h3 className="font-bold text-brand uppercase text-sm mb-3 border-b border-gray-100 pb-1">Լրացուցիչ</h3>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Նշումներ</label>
+                <textarea name="comment" value={formData.comment} onChange={handleChange} rows="3" className="glass-input w-full resize-y" placeholder="Այլ նշումներ..."></textarea>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 border border-gray-300 rounded-md text-gray-700 font-semibold hover:bg-gray-50 transition">
+              <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition">
                   Չեղարկել
                 </button>
-                <button type="submit" className="px-6 py-2.5 bg-[#1e293b] hover:bg-[#0f172a] text-white rounded-md font-semibold transition">
+                <button type="submit" className="glass-button px-8">
                   Պահպանել
                 </button>
               </div>
+
             </form>
           </div>
         </div>
