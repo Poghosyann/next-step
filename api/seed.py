@@ -1,10 +1,10 @@
 import models, schemas, crud
 from database import SessionLocal, engine
 
-# Ensure tables are created
-models.Base.metadata.create_all(bind=engine)
-
 def seed():
+    # Ensure tables are created
+    models.Base.metadata.create_all(bind=engine)
+    
     db = SessionLocal()
     try:
         # Check if we already have data to prevent duplicate seeding

@@ -9,11 +9,12 @@ import models, schemas, crud
 from database import engine, get_db
 import seed
 
-models.Base.metadata.create_all(bind=engine)
-# Seed the database automatically for testing on Vercel if empty
-seed.seed()
-
 app = FastAPI(title="CRM API")
+
+@app.on_event("startup")
+def startup_event():
+    models.Base.metadata.create_all(bind=engine)
+    seed.seed()
 
 # Allow requests from the frontend SPA and landing page
 app.add_middleware(
