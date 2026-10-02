@@ -3,10 +3,9 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-# Using SQLite for easy local development. The user specified PostgreSQL,
-# so we can use a DATABASE_URL environment variable to switch.
-# Example for Postgres: postgresql://user:password@localhost/dbname
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./crm.db")
+# Use /tmp for SQLite on Vercel because the root filesystem is read-only
+sqlite_path = "/tmp/crm.db" if os.getenv("VERCEL") else "./crm.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{sqlite_path}")
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
