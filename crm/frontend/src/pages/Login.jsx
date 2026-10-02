@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -18,57 +18,62 @@ const Login = ({ setAuth }) => {
         navigate('/');
       }
     } catch (err) {
-      setError('ÕÕ­Õ¡Õ¬ Õ´Õ¸Ö‚Õ¿Ö„Õ¡Õ¶Õ¸Ö‚Õ¶ Õ¯Õ¡Õ´ Õ£Õ¡Õ²Õ¿Õ¶Õ¡Õ¢Õ¡Õ¼');
+      setError('Սխալ մուտքանուն կամ գաղտնաբառ');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
-      <div className="bg-[#1a1a1a] p-8 rounded-xl border border-gray-200 w-full max-w-md shadow-2xl">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-brand mb-2">Next-Step CRM</h1>
-          <p className="text-gray-500">Õ„Õ¸Ö‚Õ¿Ö„Õ¡Õ£Ö€Õ¥Ö„ Õ±Õ¥Ö€ Õ¿Õ¾ÕµÕ¡Õ¬Õ¶Õ¥Ö€Õ¨ Õ°Õ¡Õ´Õ¡Õ¯Õ¡Ö€Õ£ Õ´Õ¿Õ¶Õ¥Õ¬Õ¸Ö‚ Õ°Õ¡Õ´Õ¡Ö€</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            <span className="bg-brand text-black p-1 rounded inline-block mr-2">CRM</span>
+            Մուտք
+          </h1>
+          <p className="text-gray-500">Մուտք գործեք համակարգ</p>
         </div>
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-400 p-3 rounded mb-6 text-sm">
+          <div className="bg-red-50 text-red-500 p-3 rounded-lg mb-6 text-sm text-center border border-red-100">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-800/80 mb-2">Õ„Õ¸Ö‚Õ¿Ö„Õ¡Õ¶Õ¸Ö‚Õ¶</label>
-            <input 
-              type="text" 
+            <label className="block text-sm font-bold text-gray-700 mb-2">Մուտքանուն</label>
+            <input
+              type="text"
+              required
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-gray-800 focus:border-brand outline-none"
+              className="w-full bg-white border border-gray-300 rounded-md p-3 text-gray-800 focus:border-brand focus:ring-1 focus:ring-brand outline-none transition"
               placeholder="admin"
-              required 
             />
           </div>
+          
           <div>
-            <label className="block text-sm font-medium text-gray-800/80 mb-2">Ô³Õ¡Õ²Õ¿Õ¶Õ¡Õ¢Õ¡Õ¼</label>
-            <input 
-              type="password" 
+            <label className="block text-sm font-bold text-gray-700 mb-2">Գաղտնաբառ</label>
+            <input
+              type="password"
+              required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-md p-3 text-gray-800 focus:border-brand outline-none"
-              placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
-              required 
+              className="w-full bg-white border border-gray-300 rounded-md p-3 text-gray-800 focus:border-brand focus:ring-1 focus:ring-brand outline-none transition"
+              placeholder="••••••••"
             />
           </div>
-          <button 
-            type="submit" 
-            className="w-full bg-brand hover:bg-brand/90 text-black font-bold py-3 px-4 rounded-md transition-colors"
+
+          <button
+            type="submit"
+            className="w-full bg-brand/90 hover:bg-brand text-black font-bold py-3 px-4 rounded-lg transition-all duration-200 mt-4 shadow-md hover:shadow-lg"
           >
-            Õ„Õ¸Ö‚Õ¿Ö„ Ô³Õ¸Ö€Õ®Õ¥Õ¬
+            Մուտք գործել
           </button>
         </form>
         
-        <div className="mt-6 text-center text-xs text-gray-800/40">
-          Ô¹Õ¥Õ½Õ¿Õ¡Õ¾Õ¸Ö€Õ´Õ¡Õ¶ Õ°Õ¡Õ´Õ¡Ö€ Ö…Õ£Õ¿Õ¡Õ£Õ¸Ö€Õ®Õ¥Ö„Õ admin / admin123
+        <div className="mt-6 text-center text-gray-400 text-sm">
+          <p>Թեստային տվյալներ՝ admin / admin123</p>
         </div>
       </div>
     </div>
@@ -76,6 +81,3 @@ const Login = ({ setAuth }) => {
 };
 
 export default Login;
-
-
-
