@@ -170,11 +170,11 @@ const StudentProfile = () => {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
                     <select name="status" value={formData.status || ''} onChange={handleChange} className="glass-input w-full">
-                      <option>Նոր հայտ / Կապ հաստատված</option>
-                      <option>Պոտենցիալ Ուսանող</option>
-                      <option>Սովորող</option>
-                      <option>Ավարտած</option>
-                      <option>Հեռացված</option>
+                      <option>Նոր</option>
+                      <option>Հաստատված</option>
+                      <option>Ընթացիկ</option>
+                      <option>Անորոշ</option>
+                      <option>Արխիվ</option>
                     </select>
                   </div>
                 </div>

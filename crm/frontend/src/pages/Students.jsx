@@ -13,7 +13,7 @@ const Students = () => {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     full_name: '', course_direction: 'Ֆինանսական հաշվառում', course_format: 'Օֆլայն', 
-    location: '', status: 'Նոր հայտ', phone: '', email: '', 
+    location: '', status: 'Նոր', phone: '', email: '', 
     monthly_fee: 95000, discount_percent: 0, gift_card: 0, source: 'Instagram', 
     comment: '', urgent_notes: ''
   });
@@ -169,11 +169,11 @@ const Students = () => {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
                     <select name="status" value={formData.status} onChange={handleChange} className="glass-input w-full">
-                      <option>Նոր հայտ / Կապ հաստատված</option>
-                      <option>Պոտենցիալ Ուսանող</option>
-                      <option>Սովորող</option>
-                      <option>Ավարտած</option>
-                      <option>Հեռացված</option>
+                      <option>Նոր</option>
+                      <option>Հաստատված</option>
+                      <option>Ընթացիկ</option>
+                      <option>Անորոշ</option>
+                      <option>Արխիվ</option>
                     </select>
                   </div>
                 </div>

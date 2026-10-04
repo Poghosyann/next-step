@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         full_name: name,
                         phone: phone,
                         course_format: format === 'online' ? 'Օնլայն' : 'Օֆլայն',
-                        status: 'Նոր հայտ / Կապ հաստատված',
+                        status: 'Նոր',
                         source: 'Landing Page'
                     })
                 });
