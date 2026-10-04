@@ -14,6 +14,9 @@ def seed():
 
         print("Seeding database...")
         
+        # Create Admin
+        crud.create_admin(db, "admin", "admin123")
+        
         # Create Courses
         course1 = crud.create_course(db, schemas.CourseCreate(title="Ֆինանսական հաշվառում", description="Հաշվապահության հիմունքներ"))
         course2 = crud.create_course(db, schemas.CourseCreate(title="Հարկային հաշվառում", description="ՀՀ հարկային օրենսդրություն"))

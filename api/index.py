@@ -15,6 +15,11 @@ app = FastAPI(title="CRM API")
 def startup_event():
     models.Base.metadata.create_all(bind=engine)
     seed.seed()
+    
+    # Ensure default admin exists
+    db = next(get_db())
+    if not crud.get_admin(db, "admin"):
+        crud.create_admin(db, "admin", "admin123")
 
 # Allow requests from the frontend SPA and landing page
 app.add_middleware(
@@ -27,10 +32,18 @@ app.add_middleware(
 
 @app.post("/api/login")
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
-    # Hardcoded test admin, in production check DB
-    if req.username == "admin" and req.password == "admin123":
+    admin = crud.get_admin(db, req.username)
+    if admin and admin.password == req.password:
         return {"token": "fake-jwt-token-123"}
     raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.put("/api/settings/password")
+def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db)):
+    admin = crud.get_admin(db, "admin")
+    if admin and admin.password == req.current_password:
+        crud.update_admin_password(db, "admin", req.new_password)
+        return {"ok": True}
+    raise HTTPException(status_code=400, detail="Invalid current password")
 
 @app.post("/api/students", response_model=schemas.Student)
 def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):

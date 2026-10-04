@@ -2,6 +2,28 @@ from sqlalchemy.orm import Session
 import models, schemas
 
 # ============
+# Admin
+# ============
+def get_admin(db: Session, username: str):
+    return db.query(models.Admin).filter(models.Admin.username == username).first()
+
+def create_admin(db: Session, username: str, password: str):
+    db_admin = models.Admin(username=username, password=password)
+    db.add(db_admin)
+    db.commit()
+    db.refresh(db_admin)
+    return db_admin
+
+def update_admin_password(db: Session, username: str, new_password: str):
+    admin = get_admin(db, username)
+    if admin:
+        admin.password = new_password
+        db.commit()
+        db.refresh(admin)
+        return admin
+    return None
+
+# ============
 # Students
 # ============
 def get_student_by_email(db: Session, email: str):

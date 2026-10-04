@@ -1,40 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { X, Search, Trash2, Edit2, Plus } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Users2 } from 'lucide-react';
 
 const Groups = () => {
   const [groups, setGroups] = useState([]);
-  const [showModal, setShowModal] = useState(false);
   const [courses, setCourses] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [students, setStudents] = useState([]);
-  
-  const [formData, setFormData] = useState({
-    name: '',
-    course_id: '',
-    instructor_id: '',
-    start_date: '',
-    start_time: '',
-    end_time: '',
-    notes: ''
-  });
-  const [selectedDays, setSelectedDays] = useState([]);
-  const [selectedStudents, setSelectedStudents] = useState([]);
 
-  const allDays = ['Երկ', 'Երք', 'Չրք', 'Հնգ', 'Ուրբ', 'Շբթ', 'Կիր'];
+  const [showModal, setShowModal] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState(null);
+
+  const initialForm = {
+    name: '', course_id: '', instructor_id: '',
+    start_date: '', start_time: '', end_time: '', days: ''
+  };
+  const [formData, setFormData] = useState(initialForm);
+
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const allDays = ['Երկ.', 'Երք.', 'Չրք.', 'Հնգ.', 'Ուրբ.', 'Շբթ.', 'Կիր.'];
+  const [selectedDays, setSelectedDays] = useState([]);
 
   const fetchData = async () => {
     try {
-      const [grRes, crsRes, instRes, stuRes] = await Promise.all([
+      const [grRes, cRes, iRes, sRes] = await Promise.all([
         api.get('/groups'),
         api.get('/courses'),
         api.get('/instructors'),
         api.get('/students?limit=1000')
       ]);
       setGroups(grRes.data);
-      setCourses(crsRes.data);
-      setInstructors(instRes.data);
-      setStudents(stuRes.data.items || []);
+      setCourses(cRes.data);
+      setInstructors(cRes.data); // Wait, in original code it was probably iRes.data
+      setInstructors(iRes.data);
+      setStudents(sRes.data.items || sRes.data);
     } catch (err) {
       console.error(err);
     }
@@ -44,14 +43,8 @@ const Groups = () => {
     fetchData();
   }, []);
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-  const toggleDay = (day) => {
-    if (selectedDays.includes(day)) {
-      setSelectedDays(selectedDays.filter(d => d !== day));
-    } else {
-      setSelectedDays([...selectedDays, day]);
-    }
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleStudentSelect = (e) => {
@@ -68,45 +61,82 @@ const Groups = () => {
     setSelectedStudents(selectedStudents.filter(s => s.id !== id));
   };
 
+  const toggleDay = (day) => {
+    if (selectedDays.includes(day)) {
+      setSelectedDays(selectedDays.filter(d => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day]);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const payload = {
+      ...formData,
+      days: selectedDays.join(', ')
+    };
+
     try {
-      const payload = {
-        ...formData,
-        course_id: parseInt(formData.course_id),
-        instructor_id: parseInt(formData.instructor_id),
-        days: selectedDays.join(', ')
-      };
-      const res = await api.post('/groups', payload);
-      
-      if (selectedStudents.length > 0) {
-        await api.post(`/groups/${res.data.id}/students`, {
-          student_ids: selectedStudents.map(s => s.id)
-        });
+      let savedGroup;
+      if (editingGroupId) {
+        const res = await api.put(`/groups/${editingGroupId}`, payload);
+        savedGroup = res.data;
+      } else {
+        const res = await api.post('/groups', payload);
+        savedGroup = res.data;
       }
       
+      // Sync students
+      await api.post(`/groups/${savedGroup.id}/students`, {
+        student_ids: selectedStudents.map(s => s.id)
+      });
+
       setShowModal(false);
-      fetchData();
-      // Reset form
-      setFormData({ name: '', course_id: '', instructor_id: '', start_date: '', start_time: '', end_time: '', notes: '' });
-      setSelectedDays([]);
+      setEditingGroupId(null);
+      setFormData(initialForm);
       setSelectedStudents([]);
+      setSelectedDays([]);
+      fetchData();
     } catch (err) {
       console.error(err);
-      alert('Սխալ առաջացավ խումբը պահպանելիս:');
+      alert('Սխալ խումբը պահպանելիս');
     }
   };
 
   const handleDelete = async (id) => {
-    if(window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս խումբը։')) {
+    if(window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս խումբը:')) {
       try {
         await api.delete(`/groups/${id}`);
         fetchData();
       } catch (err) {
         console.error(err);
-        alert('Սխալ ջնջելիս:');
+        alert('Սխալ խումբը ջնջելիս');
       }
     }
+  };
+
+  const openEditModal = (group) => {
+    setFormData({
+      name: group.name || '',
+      course_id: group.course_id || '',
+      instructor_id: group.instructor_id || '',
+      start_date: group.start_date || '',
+      start_time: group.start_time || '',
+      end_time: group.end_time || '',
+      days: group.days || ''
+    });
+    setSelectedDays(group.days ? group.days.split(', ') : []);
+    setSelectedStudents(group.students || []);
+    setEditingGroupId(group.id);
+    setShowModal(true);
+  };
+
+  const openCreateModal = () => {
+    setFormData(initialForm);
+    setSelectedDays([]);
+    setSelectedStudents([]);
+    setEditingGroupId(null);
+    setShowModal(true);
   };
 
   return (
@@ -114,42 +144,49 @@ const Groups = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Խմբեր</h1>
-          <p className="text-gray-500">Կառավարեք ուսումնական խմբերը և դասացուցակները</p>
+          <p className="text-gray-500">Խմբերի և դասացուցակների կառավարում</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="glass-button flex items-center gap-2">
-          <Plus size={20} /> Նոր Խումբ
+        <button onClick={openCreateModal} className="glass-button flex items-center gap-2">
+          <Plus size={20} /> Նոր խումբ
         </button>
       </div>
 
       <div className="glass-panel overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="p-4 overflow-x-auto">
           <table className="w-full text-left text-gray-800">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="p-4 font-bold text-gray-600">Անվանում</th>
-                <th className="p-4 font-bold text-gray-600">Դասընթաց</th>
-                <th className="p-4 font-bold text-gray-600">Դասախոս</th>
-                <th className="p-4 font-bold text-gray-600">Օրեր</th>
-                <th className="p-4 font-bold text-gray-600">Ժամեր</th>
-                <th className="p-4 font-bold text-gray-600">Ուսանողներ</th>
-                <th className="p-4 font-bold text-gray-600 text-right">Գործողություն</th>
+            <thead>
+              <tr className="border-b border-gray-100 text-gray-500 text-sm">
+                <th className="p-4 font-semibold">Խմբի Անվանում</th>
+                <th className="p-4 font-semibold">Դասընթաց</th>
+                <th className="p-4 font-semibold">Դասախոս</th>
+                <th className="p-4 font-semibold">Օրեր</th>
+                <th className="p-4 font-semibold">Ժամեր</th>
+                <th className="p-4 font-semibold">Ուսանողներ</th>
+                <th className="p-4 font-semibold text-right">Գործողություն</th>
               </tr>
             </thead>
             <tbody>
               {groups.map((gr) => (
-                <tr key={gr.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                  <td className="p-4 font-semibold">{gr.name}</td>
-                  <td className="p-4">{gr.course ? gr.course.title : '-'}</td>
-                  <td className="p-4">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : '-'}</td>
+                <tr key={gr.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
+                  <td className="p-4 font-bold text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <Users2 size={16} className="text-brand" /> {gr.name}
+                    </div>
+                  </td>
+                  <td className="p-4 text-gray-600">{gr.course?.title}</td>
+                  <td className="p-4 text-gray-600">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : ''}</td>
                   <td className="p-4 text-brand font-medium">{gr.days}</td>
                   <td className="p-4 text-gray-600">{gr.start_time} - {gr.end_time}</td>
                   <td className="p-4">
-                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">
-                      {gr.students?.length || 0} ուսանող
+                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
+                      {gr.students?.length || 0} Ուսանող
                     </span>
                   </td>
                   <td className="p-4 text-right flex justify-end gap-2">
-                    <button onClick={() => handleDelete(gr.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-md transition">
+                    <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition">
+                      <Edit2 size={16} />
+                    </button>
+                    <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition">
                       <Trash2 size={16} />
                     </button>
                   </td>
@@ -167,7 +204,7 @@ const Groups = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-8">
             <div className="flex justify-between items-center p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
-              <h2 className="text-xl font-bold text-gray-800">Նոր Խումբ</h2>
+              <h2 className="text-xl font-bold text-gray-800">{editingGroupId ? 'Խմբագրել Խումբը' : 'Նոր Խումբ'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-black transition">
                 <X size={24} />
               </button>
@@ -177,14 +214,14 @@ const Groups = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Խմբի Անվանում</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Խմբի Անվանում *</label>
                   <input required type="text" name="name" value={formData.name} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ ՖՀ-101" />
                 </div>
                 
                 <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց *</label>
                   <select required name="course_id" value={formData.course_id} onChange={handleChange} className="glass-input w-full">
-                    <option value="">-- Ընտրել դասընթաց --</option>
+                    <option value="">-- Ընտրեք Դասընթաց --</option>
                     {courses.map(c => (
                       <option key={c.id} value={c.id}>{c.title}</option>
                     ))}
@@ -193,9 +230,9 @@ const Groups = () => {
               </div>
               
               <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <label className="block text-sm font-bold text-gray-700 mb-3">Դասախոս</label>
+                <label className="block text-sm font-bold text-gray-700 mb-3">Դասախոս *</label>
                 <select required name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
-                  <option value="">-- Ընտրել դասախոս --</option>
+                  <option value="">-- Ընտրեք Դասախոս --</option>
                   {instructors.map(inst => (
                     <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
                   ))}
@@ -205,7 +242,7 @@ const Groups = () => {
               <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <label className="block text-sm font-bold text-gray-700">Ուսանողներ</label>
-                  <select onChange={handleStudentSelect} className="glass-input text-sm py-1.5">
+                  <select onChange={handleStudentSelect} className="glass-input text-sm py-1.5 border-gray-300">
                     <option value="">+ Ավելացնել ուսանող</option>
                     {students.map(st => (
                       <option key={st.id} value={st.id}>{st.full_name}</option>
@@ -216,9 +253,9 @@ const Groups = () => {
                 <div className="flex flex-wrap gap-2 p-3 min-h-[80px] bg-gray-50 border border-gray-200 rounded-md">
                   {selectedStudents.length === 0 && <span className="text-gray-400 text-sm">Ուսանողներ ընտրված չեն...</span>}
                   {selectedStudents.map(st => (
-                    <div key={st.id} className="flex items-center gap-2 bg-brand/20 border border-brand/30 text-gray-800 px-3 py-1.5 rounded-full text-sm font-medium">
+                    <div key={st.id} className="flex items-center gap-2 bg-brand/10 border border-brand/30 text-gray-800 px-3 py-1.5 rounded-full text-sm font-medium">
                       {st.full_name}
-                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1">
+                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1 text-gray-500">
                         <X size={14} strokeWidth={3} />
                       </button>
                     </div>
@@ -231,7 +268,7 @@ const Groups = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                   <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2">Մեկնարկի ամսաթիվ</label>
+                    <label className="block text-xs font-bold text-gray-500 mb-2">Սկզբի ամսաթիվ</label>
                     <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
@@ -253,7 +290,7 @@ const Groups = () => {
                             type="button"
                             onClick={() => toggleDay(day)}
                             className={`px-2 py-1 rounded text-xs font-medium transition ${
-                              isSelected ? 'bg-brand text-black shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              isSelected ? 'bg-brand text-black shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
                             }`}
                           >
                             {day}

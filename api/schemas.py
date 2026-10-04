@@ -152,3 +152,7 @@ class Group(GroupBase):
 # =================
 class GroupStudentAdd(BaseModel):
     student_ids: List[int]
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str
