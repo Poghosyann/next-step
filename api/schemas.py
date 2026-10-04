@@ -58,7 +58,7 @@ class StudentBase(BaseModel):
     location: Optional[str] = None
     status: Optional[str] = None
     phone: str
-    email: EmailStr
+    email: Optional[str] = None
     monthly_fee: Optional[int] = 0
     discount_percent: Optional[int] = 0
     gift_card: Optional[int] = 0

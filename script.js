@@ -70,25 +70,50 @@ document.addEventListener('DOMContentLoaded', () => {
     const formMessage = document.getElementById('formMessage');
 
     if (registrationForm) {
-        registrationForm.addEventListener('submit', (e) => {
+        registrationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            // Simulate sending data
             const btn = registrationForm.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Ուղարկվում է...';
             btn.disabled = true;
 
-            setTimeout(() => {
+            const name = document.getElementById('name').value;
+            const phone = document.getElementById('phone').value;
+            const format = document.querySelector('input[name="format"]:checked').value;
+
+            try {
+                const res = await fetch('/api/students', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        full_name: name,
+                        phone: phone,
+                        course_format: format === 'online' ? 'Օնլայն' : 'Օֆլայն',
+                        status: 'Նոր հայտ / Կապ հաստատված',
+                        source: 'Landing Page'
+                    })
+                });
+
+                if (res.ok) {
+                    registrationForm.reset();
+                    formMessage.style.display = 'block';
+                    formMessage.style.color = '#10b981';
+                    formMessage.textContent = 'Շնորհակալություն, հայտը ընդունված է! Մենք շուտով կկապվենք Ձեզ հետ։';
+                } else {
+                    throw new Error('API Error');
+                }
+            } catch (err) {
+                formMessage.style.display = 'block';
+                formMessage.style.color = '#ef4444';
+                formMessage.textContent = 'Սխալ առաջացավ, փորձեք կրկին։';
+            } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
-                registrationForm.reset();
-                formMessage.style.display = 'block';
-                
                 setTimeout(() => {
                     formMessage.style.display = 'none';
                 }, 5000);
-            }, 1500);
+            }
         });
     }
 
