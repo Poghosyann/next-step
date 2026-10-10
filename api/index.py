@@ -6,7 +6,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas, crud
-from database import engine, get_db
+from database import engine, get_db, SQLALCHEMY_DATABASE_URL, SessionLocal
 import seed
 
 app = FastAPI(title="CRM API")
@@ -15,19 +15,22 @@ _db_initialized = False
 def init_db_if_needed():
     global _db_initialized
     if not _db_initialized:
-        models.Base.metadata.create_all(bind=engine)
         try:
-            seed.seed()
+            models.Base.metadata.create_all(bind=engine)
+            try:
+                seed.seed()
+            except Exception as e:
+                print("Seed error:", e)
+            db = SessionLocal()
+            try:
+                if not crud.get_admin(db, "admin"):
+                    crud.create_admin(db, "admin", "admin123")
+            except Exception as e:
+                print("Admin create error:", e)
+            finally:
+                db.close()
         except Exception as e:
-            print("Seed error:", e)
-        db = SessionLocal()
-        try:
-            if not crud.get_admin(db, "admin"):
-                crud.create_admin(db, "admin", "admin123")
-        except Exception as e:
-            print("Admin create error:", e)
-        finally:
-            db.close()
+            print("DB Init Error:", e)
         _db_initialized = True
 
 # Allow requests from the frontend SPA and landing page
@@ -51,6 +54,16 @@ def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
     if admin and admin.password == req.password:
         return {"token": "fake-jwt-token-123"}
     raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@app.get("/api/debug-db")
+def debug_db():
+    try:
+        with engine.connect() as conn:
+            import sqlalchemy
+            result = conn.execute(sqlalchemy.text("SELECT 1")).fetchone()
+            return {"status": "connected", "result": result[0], "url": SQLALCHEMY_DATABASE_URL[:20] + "..."}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 @app.put("/api/settings/password")
 def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db)):
