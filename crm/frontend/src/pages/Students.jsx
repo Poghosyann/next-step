@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { User, Plus, X } from 'lucide-react';
+import { User, Plus, X, Search, Filter } from 'lucide-react';
 
 const Students = () => {
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDirection, setFilterDirection] = useState('');
   const limit = 50;
 
   const [showModal, setShowModal] = useState(false);
@@ -21,7 +24,12 @@ const Students = () => {
   const fetchStudents = async () => {
     try {
       const skip = (page - 1) * limit;
-      const response = await api.get(`/students?skip=${skip}&limit=${limit}`);
+      let url = `/students?skip=${skip}&limit=${limit}`;
+      if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
+      if (filterStatus) url += `&status=${encodeURIComponent(filterStatus)}`;
+      if (filterDirection) url += `&course_direction=${encodeURIComponent(filterDirection)}`;
+      
+      const response = await api.get(url);
       setStudents(response.data.items);
       setTotalStudents(response.data.total);
     } catch (error) {
@@ -31,7 +39,7 @@ const Students = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, [page]);
+  }, [page, searchQuery, filterStatus, filterDirection]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,6 +67,51 @@ const Students = () => {
         <button onClick={() => setShowModal(true)} className="glass-button flex items-center gap-2">
           <Plus size={18} /> Ավելացնել
         </button>
+      </div>
+
+      
+      {/* Որոնում և Ֆիլտրեր */}
+      <div className="glass-panel p-4 mb-6 flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input 
+            type="text" 
+            placeholder="Որոնել անունով, հեռախոսով կամ էլ-փոստով..." 
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
+            className="glass-input w-full pl-10 py-2"
+          />
+        </div>
+        <div className="flex gap-4 w-full md:w-auto">
+          <div className="relative">
+            <select 
+              value={filterDirection} 
+              onChange={(e) => { setFilterDirection(e.target.value); setPage(1); }}
+              className="glass-input pl-10 py-2 appearance-none w-full md:w-48"
+            >
+              <option value="">Բոլոր ուղղությունները</option>
+              <option value="Ֆինանսական հաշվառում">Ֆինանսական հաշվառում</option>
+              <option value="Հարկային հաշվառում">Հարկային հաշվառում</option>
+              <option value="Excel">Excel</option>
+            </select>
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          </div>
+          <div className="relative">
+            <select 
+              value={filterStatus} 
+              onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+              className="glass-input pl-10 py-2 appearance-none w-full md:w-48"
+            >
+              <option value="">Բոլոր կարգավիճակները</option>
+              <option value="Նոր">Նոր</option>
+              <option value="Հաստատված">Հաստատված</option>
+              <option value="Ընթացիկ">Ընթացիկ</option>
+              <option value="Անորոշ">Անորոշ</option>
+              <option value="Արխիվ">Արխիվ</option>
+            </select>
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          </div>
+        </div>
       </div>
 
       <div className="glass-panel overflow-hidden">

@@ -96,9 +96,18 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_student(db=db, student=student)
 
+from typing import Optional
+
 @app.get("/api/students", response_model=schemas.PaginatedResponse[schemas.Student])
-def read_students(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_students(db, skip=skip, limit=limit)
+def read_students(
+    skip: int = 0, 
+    limit: int = 100, 
+    search: Optional[str] = None,
+    status: Optional[str] = None,
+    course_direction: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    return crud.get_students(db, skip=skip, limit=limit, search=search, status=status, course_direction=course_direction)
 
 @app.get("/api/students/{student_id}", response_model=schemas.Student)
 def read_student(student_id: int, db: Session = Depends(get_db)):

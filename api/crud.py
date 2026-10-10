@@ -32,9 +32,27 @@ def get_student_by_email(db: Session, email: str):
 def get_student(db: Session, student_id: int):
     return db.query(models.Student).filter(models.Student.id == student_id).first()
 
-def get_students(db: Session, skip: int = 0, limit: int = 100):
-    total = db.query(models.Student).count()
-    items = db.query(models.Student).order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
+from sqlalchemy import or_
+
+def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = None, status: str = None, course_direction: str = None):
+    query = db.query(models.Student)
+    
+    if search:
+        search_filter = f"%{search}%"
+        query = query.filter(
+            or_(
+                models.Student.full_name.ilike(search_filter),
+                models.Student.email.ilike(search_filter),
+                models.Student.phone.ilike(search_filter)
+            )
+        )
+    if status:
+        query = query.filter(models.Student.status == status)
+    if course_direction:
+        query = query.filter(models.Student.course_direction == course_direction)
+        
+    total = query.count()
+    items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
     return {"total": total, "items": items}
 
 def create_student(db: Session, student: schemas.StudentCreate):
