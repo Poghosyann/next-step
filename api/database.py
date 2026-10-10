@@ -6,9 +6,9 @@ import os
 db_url = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
 if db_url:
     if db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql+pg8000://", 1)
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
     elif db_url.startswith("postgresql://"):
-        db_url = db_url.replace("postgresql://", "postgresql+pg8000://", 1)
+        db_url = db_url.replace("postgresql://", "postgresql://", 1)
     if "sslmode=require" not in db_url and "supabase" not in db_url:
         db_url += "?sslmode=require" if "?" not in db_url else "&sslmode=require"
     SQLALCHEMY_DATABASE_URL = db_url
