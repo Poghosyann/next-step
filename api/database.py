@@ -3,13 +3,19 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-# Use /tmp for SQLite on Vercel because the root filesystem is read-only
-sqlite_path = "/tmp/crm.db" if os.getenv("VERCEL") else "./crm.db"
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{sqlite_path}")
+db_url = os.environ.get("POSTGRES_URL") or os.environ.get("DATABASE_URL")
+if db_url:
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    if "sslmode=require" not in db_url and "supabase" not in db_url:
+        db_url += "?sslmode=require" if "?" not in db_url else "&sslmode=require"
+    SQLALCHEMY_DATABASE_URL = db_url
+else:
+    sqlite_path = "/tmp/crm.db" if os.getenv("VERCEL") else "./crm.db"
+    SQLALCHEMY_DATABASE_URL = f"sqlite:///{sqlite_path}"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, 
-    # check_same_thread is only needed for SQLite
     connect_args={"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
