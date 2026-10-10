@@ -1,6 +1,26 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import api from '../api';
 
 const Dashboard = () => {
+  const [stats, setStats] = useState({
+    total_students: 0,
+    active_courses: 0,
+    instructors: 0,
+    monthly_revenue: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await api.get('/stats');
+        setStats(res.data);
+      } catch (err) {
+        console.error('Error fetching stats:', err);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="p-8">
       <header className="mb-8">
@@ -10,10 +30,10 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
-          { title: 'Ընդհանուր ուսանողներ', value: '20' },
-          { title: 'Ակտիվ դասընթացներ', value: '2' },
-          { title: 'Դասախոսներ', value: '2' },
-          { title: 'Ամսական եկամուտ', value: '1,800,000 ֏' },
+          { title: 'Ընդհանուր ուսանողներ', value: stats.total_students },
+          { title: 'Ակտիվ դասընթացներ', value: stats.active_courses },
+          { title: 'Դասախոսներ', value: stats.instructors },
+          { title: 'Ակնկալվող ամսական եկամուտ', value: `${stats.monthly_revenue.toLocaleString()} ֏` },
         ].map((stat, idx) => (
           <div key={idx} className="glass-panel p-6">
             <h3 className="text-gray-500 text-sm font-medium mb-1">{stat.title}</h3>

@@ -45,6 +45,21 @@ def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db)):
         return {"ok": True}
     raise HTTPException(status_code=400, detail="Invalid current password")
 
+@app.get("/api/stats")
+def get_stats(db: Session = Depends(get_db)):
+    from sqlalchemy import func
+    students_count = db.query(models.Student).count()
+    courses_count = db.query(models.Course).count()
+    instructors_count = db.query(models.Instructor).count()
+    monthly_revenue = db.query(func.sum(models.Student.monthly_fee)).scalar() or 0
+    
+    return {
+        "total_students": students_count,
+        "active_courses": courses_count,
+        "instructors": instructors_count,
+        "monthly_revenue": monthly_revenue
+    }
+
 @app.post("/api/students", response_model=schemas.Student)
 def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
     """Endpoint for landing page and CRM to create students"""
