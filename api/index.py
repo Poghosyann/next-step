@@ -11,15 +11,24 @@ import seed
 
 app = FastAPI(title="CRM API")
 
-@app.on_event("startup")
-def startup_event():
-    models.Base.metadata.create_all(bind=engine)
-    seed.seed()
-    
-    # Ensure default admin exists
-    db = next(get_db())
-    if not crud.get_admin(db, "admin"):
-        crud.create_admin(db, "admin", "admin123")
+_db_initialized = False
+def init_db_if_needed():
+    global _db_initialized
+    if not _db_initialized:
+        models.Base.metadata.create_all(bind=engine)
+        try:
+            seed.seed()
+        except Exception as e:
+            print("Seed error:", e)
+        db = SessionLocal()
+        try:
+            if not crud.get_admin(db, "admin"):
+                crud.create_admin(db, "admin", "admin123")
+        except Exception as e:
+            print("Admin create error:", e)
+        finally:
+            db.close()
+        _db_initialized = True
 
 # Allow requests from the frontend SPA and landing page
 app.add_middleware(
@@ -29,6 +38,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def db_init_middleware(request, call_next):
+    init_db_if_needed()
+    response = await call_next(request)
+    return response
 
 @app.post("/api/login")
 def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
