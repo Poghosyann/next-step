@@ -154,9 +154,18 @@ def calculate_instructor_monthly_stats(instructor, groups):
             continue
         if grp.name:
             assigned_groups.append(grp.name)
-        if not grp.days:
+        if not grp.days or not grp.start_date:
             continue
         
+        try:
+            parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
+        except Exception:
+            continue
+
+        # Group is only active if start_date <= today
+        if parsed_start > today:
+            continue
+
         group_days_str = grp.days.lower()
         active_weekdays = set()
         for w_idx, patterns in day_patterns:
@@ -166,22 +175,18 @@ def calculate_instructor_monthly_stats(instructor, groups):
         if not active_weekdays:
             continue
 
-        start_date = first_of_month
-        if grp.start_date:
-            try:
-                parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
-                if parsed_start > start_date:
-                    start_date = parsed_start
-            except Exception:
-                pass
+        course_total = grp.course.total_lessons if (grp.course and grp.course.total_lessons) else None
 
-        if start_date > today:
-            continue
-
-        curr = start_date
+        # Trace lessons from parsed_start to today
+        curr = parsed_start
+        lifetime_count = 0
         while curr <= today:
             if curr.weekday() in active_weekdays:
-                total_lessons += 1
+                lifetime_count += 1
+                if course_total and lifetime_count > course_total:
+                    break
+                if curr >= first_of_month:
+                    total_lessons += 1
             curr += datetime.timedelta(days=1)
 
     rate = instructor.rate_per_lesson or 0
@@ -241,18 +246,99 @@ def delete_instructor(db: Session, instructor_id: int):
 # ============
 # Groups
 # ============
+def calculate_group_progress(grp):
+    today = datetime.date.today()
+    total_course_lessons = grp.course.total_lessons if (grp.course and grp.course.total_lessons) else 0
+
+    if not grp.start_date:
+        return {
+            "is_started": False,
+            "completed_lessons": 0,
+            "remaining_lessons": total_course_lessons,
+            "progress_percent": 0
+        }
+    
+    try:
+        parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
+    except Exception:
+        return {
+            "is_started": False,
+            "completed_lessons": 0,
+            "remaining_lessons": total_course_lessons,
+            "progress_percent": 0
+        }
+
+    if parsed_start > today:
+        return {
+            "is_started": False,
+            "completed_lessons": 0,
+            "remaining_lessons": total_course_lessons,
+            "progress_percent": 0
+        }
+
+    day_patterns = [
+        (0, ['երկ']),
+        (1, ['երք', 'երեք']),
+        (2, ['չրք', 'չոր']),
+        (3, ['հնգ', 'հինգ']),
+        (4, ['ուրբ', 'ուբթ', 'ուր']),
+        (5, ['շբթ', 'շաբ']),
+        (6, ['կիր']),
+    ]
+    group_days_str = (grp.days or "").lower()
+    active_weekdays = set()
+    for w_idx, patterns in day_patterns:
+        if any(p in group_days_str for p in patterns):
+            active_weekdays.add(w_idx)
+
+    completed = 0
+    if active_weekdays:
+        curr = parsed_start
+        while curr <= today:
+            if curr.weekday() in active_weekdays:
+                completed += 1
+                if total_course_lessons > 0 and completed >= total_course_lessons:
+                    break
+            curr += datetime.timedelta(days=1)
+
+    rem = max(0, total_course_lessons - completed) if total_course_lessons > 0 else 0
+    pct = round((completed / total_course_lessons) * 100) if total_course_lessons > 0 else 0
+    if pct > 100:
+        pct = 100
+
+    return {
+        "is_started": True,
+        "completed_lessons": completed,
+        "remaining_lessons": rem,
+        "progress_percent": pct
+    }
+
+def enrich_group(grp):
+    if not grp:
+        return None
+    progress = calculate_group_progress(grp)
+    grp.is_started = progress["is_started"]
+    grp.completed_lessons = progress["completed_lessons"]
+    grp.remaining_lessons = progress["remaining_lessons"]
+    grp.progress_percent = progress["progress_percent"]
+    return grp
+
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Group).offset(skip).limit(limit).all()
+    groups = db.query(models.Group).offset(skip).limit(limit).all()
+    for grp in groups:
+        enrich_group(grp)
+    return groups
 
 def get_group(db: Session, group_id: int):
-    return db.query(models.Group).filter(models.Group.id == group_id).first()
+    grp = db.query(models.Group).filter(models.Group.id == group_id).first()
+    return enrich_group(grp)
 
 def create_group(db: Session, group: schemas.GroupCreate):
     db_group = models.Group(**group.dict())
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
-    return db_group
+    return enrich_group(db_group)
 
 def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
     db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
@@ -262,6 +348,7 @@ def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
             setattr(db_group, key, value)
         db.commit()
         db.refresh(db_group)
+        enrich_group(db_group)
     return db_group
 
 def delete_group(db: Session, group_id: int):

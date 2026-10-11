@@ -21,7 +21,8 @@ class Course(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True)
-    description = Column(String)
+    description = Column(String, nullable=True)
+    total_lessons = Column(Integer, default=0)
 
     groups = relationship("Group", back_populates="course")
 

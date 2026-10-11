@@ -18,8 +18,8 @@ def seed():
         crud.create_admin(db, "admin", "admin123")
         
         # Create Courses
-        course1 = crud.create_course(db, schemas.CourseCreate(title="Ֆինանսական հաշվառում", description="Հաշվապահության հիմունքներ"))
-        course2 = crud.create_course(db, schemas.CourseCreate(title="Հարկային հաշվառում", description="ՀՀ հարկային օրենսդրություն"))
+        course1 = crud.create_course(db, schemas.CourseCreate(title="Ֆինանսական հաշվառում", total_lessons=30))
+        course2 = crud.create_course(db, schemas.CourseCreate(title="Հարկային հաշվառում", total_lessons=24))
         
         # Create Instructors
         instructor1 = crud.create_instructor(db, schemas.InstructorCreate(first_name="Անահիտ", last_name="Գրիգորյան", phone="+37444000000", specialization="Ֆինանսական հաշվառում"))

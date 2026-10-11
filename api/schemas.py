@@ -12,13 +12,17 @@ class LoginRequest(BaseModel):
 class CourseBase(BaseModel):
     title: str
     description: Optional[str] = None
+    total_lessons: Optional[int] = 0
 
-class CourseCreate(CourseBase):
-    pass
+class CourseCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    total_lessons: Optional[int] = 0
 
 class CourseUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    total_lessons: Optional[int] = None
 
 class Course(CourseBase):
     id: int
@@ -149,6 +153,10 @@ class Group(GroupBase):
     course: Optional[Course] = None
     instructor: Optional[Instructor] = None
     students: List[Student] = []
+    completed_lessons: Optional[int] = 0
+    remaining_lessons: Optional[int] = 0
+    progress_percent: Optional[int] = 0
+    is_started: Optional[bool] = False
     class Config:
         orm_mode = True
 

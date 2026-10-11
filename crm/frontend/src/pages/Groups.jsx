@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { X, Plus, Trash2, Edit2, Users2, Search } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Users2, Search, Clock } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Groups = () => {
@@ -26,6 +26,68 @@ const Groups = () => {
 
   const allDays = ['Երկ.', 'Երք.', 'Չրք.', 'Հնգ.', 'Ուրբ.', 'Շբթ.', 'Կիր.'];
   const [selectedDays, setSelectedDays] = useState([]);
+
+  const getGroupProgress = (gr) => {
+    if (gr.progress_percent !== undefined && gr.is_started !== undefined) {
+      return {
+        isStarted: gr.is_started,
+        completed: gr.completed_lessons || 0,
+        remaining: gr.remaining_lessons || 0,
+        percent: gr.progress_percent || 0,
+        total: gr.course?.total_lessons || 0
+      };
+    }
+
+    const total = gr.course?.total_lessons || 0;
+    if (!gr.start_date) {
+      return { isStarted: false, completed: 0, remaining: total, percent: 0, total };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const startDate = new Date(gr.start_date);
+    startDate.setHours(0, 0, 0, 0);
+
+    if (startDate > today) {
+      return { isStarted: false, completed: 0, remaining: total, percent: 0, total };
+    }
+
+    const dayPatterns = [
+      { dayIdx: 1, patterns: ['երկ'] },
+      { dayIdx: 2, patterns: ['երք', 'երեք'] },
+      { dayIdx: 3, patterns: ['չրք', 'չոր'] },
+      { dayIdx: 4, patterns: ['հնգ', 'հինգ'] },
+      { dayIdx: 5, patterns: ['ուրբ', 'ուբթ', 'ուր'] },
+      { dayIdx: 6, patterns: ['շբթ', 'շաբ'] },
+      { dayIdx: 0, patterns: ['կիր'] },
+    ];
+
+    const groupDaysStr = (gr.days || '').toLowerCase();
+    const activeDays = new Set();
+    dayPatterns.forEach(({ dayIdx, patterns }) => {
+      if (patterns.some(p => groupDaysStr.includes(p))) {
+        activeDays.add(dayIdx);
+      }
+    });
+
+    let completed = 0;
+    if (activeDays.size > 0) {
+      const cur = new Date(startDate);
+      while (cur <= today) {
+        if (activeDays.has(cur.getDay())) {
+          completed++;
+          if (total > 0 && completed >= total) break;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    }
+
+    const remaining = total > 0 ? Math.max(0, total - completed) : 0;
+    const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
+
+    return { isStarted: true, completed, remaining, percent, total };
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -84,15 +146,6 @@ const Groups = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleStudentSelect = (e) => {
-    const studentId = parseInt(e.target.value);
-    if (!studentId) return;
-    const student = students.find(s => s.id === studentId);
-    if (student && !selectedStudents.find(s => s.id === studentId)) {
-      setSelectedStudents([...selectedStudents, student]);
-    }
-    e.target.value = '';
-  };
 
   const removeStudent = (id) => {
     setSelectedStudents(selectedStudents.filter(s => s.id !== id));
@@ -204,39 +257,99 @@ const Groups = () => {
                 <th className="p-4 font-semibold">Դասախոս</th>
                 <th className="p-4 font-semibold">Օրեր</th>
                 <th className="p-4 font-semibold">Ժամեր</th>
+                <th className="p-4 font-semibold">Առաջընթաց</th>
                 <th className="p-4 font-semibold">Ուսանողներ</th>
                 <th className="p-4 font-semibold text-right">Գործողություն</th>
               </tr>
             </thead>
             <tbody>
-              {groups.map((gr) => (
-                <tr key={gr.id} className="border-b border-gray-50 hover:bg-gray-50 transition">
-                  <td className="p-4 font-bold text-gray-800">
-                    <div className="flex items-center gap-2">
-                      <Users2 size={16} className="text-brand" /> {gr.name}
-                    </div>
-                  </td>
-                  <td className="p-4 text-gray-600">{gr.course?.title}</td>
-                  <td className="p-4 text-gray-600">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : ''}</td>
-                  <td className="p-4 text-brand font-medium">{gr.days}</td>
-                  <td className="p-4 text-gray-600">{gr.start_time} - {gr.end_time}</td>
-                  <td className="p-4">
-                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
-                      {gr.students?.length || 0} Ուսանող
-                    </span>
-                  </td>
-                  <td className="p-4 text-right flex justify-end gap-2">
-                    <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition">
-                      <Trash2 size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {groups.map((gr) => {
+                const prog = getGroupProgress(gr);
+                const isNotStarted = !prog.isStarted;
+
+                let barColorClass = 'bg-emerald-500';
+                if (prog.total > 0) {
+                  if (prog.remaining === 0 || prog.completed >= prog.total) {
+                    barColorClass = 'bg-red-500';
+                  } else if (prog.remaining >= 1 && prog.remaining <= 3) {
+                    barColorClass = 'bg-orange-500';
+                  } else {
+                    barColorClass = 'bg-emerald-500';
+                  }
+                } else {
+                  barColorClass = 'bg-gray-300';
+                }
+
+                return (
+                  <tr 
+                    key={gr.id} 
+                    className={`border-b transition ${
+                      isNotStarted 
+                        ? 'bg-purple-50/40 border-purple-100 hover:bg-purple-50/70 border-l-4 border-l-purple-500' 
+                        : 'border-gray-50 hover:bg-gray-50 border-l-4 border-l-transparent'
+                    }`}
+                  >
+                    <td className="p-4 font-bold text-gray-800">
+                      <div className="flex flex-col gap-1 items-start">
+                        <div className="flex items-center gap-2">
+                          <Users2 size={16} className={isNotStarted ? "text-purple-600" : "text-brand"} />
+                          <span>{gr.name}</span>
+                        </div>
+                        {isNotStarted && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-full">
+                            <Clock size={11} /> Շուտով ({gr.start_date || 'Ամսաթիվը նշված չէ'})
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 text-gray-600">
+                      <div>
+                        <span>{gr.course?.title}</span>
+                        {gr.course?.total_lessons > 0 && (
+                          <span className="text-[11px] text-gray-400 block font-normal">
+                            ({gr.course.total_lessons} դաս)
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 text-gray-600">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : ''}</td>
+                    <td className="p-4 text-brand font-medium">{gr.days}</td>
+                    <td className="p-4 text-gray-600">{gr.start_time} - {gr.end_time}</td>
+                    <td className="p-4">
+                      {isNotStarted ? (
+                        <div className="flex items-center gap-2" title="Դասընթացը դեռ չի մեկնարկել">
+                          <div className="w-28 h-2.5 bg-gray-100 rounded-full border border-dashed border-purple-300 overflow-hidden" />
+                          <span className="text-xs text-purple-600 font-semibold whitespace-nowrap">
+                            Շուտով
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5" title="Առաջընթաց">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
+                            style={{ width: `${Math.max(0, Math.min(100, prog.percent))}%` }}
+                          />
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
+                        {gr.students?.length || 0} Ուսանող
+                      </span>
+                    </td>
+                    <td className="p-4 text-right flex justify-end gap-2">
+                      <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition" title="Խմբագրել">
+                        <Edit2 size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition" title="Ջնջել">
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {groups.length === 0 && (
-                <tr><td colSpan="7" className="p-12 text-center text-gray-400">Խմբեր չեն գտնվել</td></tr>
+                <tr><td colSpan="8" className="p-12 text-center text-gray-400">Խմբեր չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
