@@ -82,8 +82,15 @@ const StudentProfile = () => {
           <div className="flex flex-col items-center mb-6 pt-4">
             <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
             <p className="text-brand font-bold text-center mt-1">{student.course_direction}</p>
-            <div className="mt-3">
+            <div className="mt-3 flex items-center gap-2">
               <StatusBadge status={student.status} />
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                student.course_format?.toLowerCase().includes('օնլայն') || student.course_format?.toLowerCase().includes('online')
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'bg-purple-50 text-purple-700 border-purple-200'
+              }`}>
+                {student.course_format || 'Օֆլայն'}
+              </span>
             </div>
           </div>
           
@@ -230,6 +237,13 @@ const StudentProfile = () => {
                       <option>Հարկային հաշվառում</option>
                       <option>1C ՀԾ ծրագրեր</option>
                       <option>Գլխավոր հաշվապահի դասընթաց</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Ձևաչափ</label>
+                    <select name="course_format" value={formData.course_format || 'Օֆլայն'} onChange={handleChange} className="glass-input w-full">
+                      <option value="Օֆլայն">🏢 Օֆլայն (Դասասենյակում)</option>
+                      <option value="Օնլայն">🌐 Օնլայն (Հեռավար)</option>
                     </select>
                   </div>
                   <div>

@@ -51,10 +51,20 @@ const Students = () => {
       if (filterDirection && filterDirection.trim()) params.course_direction = filterDirection.trim();
 
       const response = await api.get('/students', { params });
-      setStudents(response.data.items);
-      setTotalStudents(response.data.total);
+      if (Array.isArray(response.data)) {
+        setStudents(response.data);
+        setTotalStudents(response.data.length);
+      } else if (response.data && Array.isArray(response.data.items)) {
+        setStudents(response.data.items);
+        setTotalStudents(response.data.total ?? response.data.items.length);
+      } else {
+        setStudents([]);
+        setTotalStudents(0);
+      }
     } catch (error) {
       console.error('Error fetching students:', error);
+      setStudents([]);
+      setTotalStudents(0);
     }
   }, [page, searchQuery, filterStatus, filterDirection]);
 
@@ -85,16 +95,18 @@ const Students = () => {
       return;
     }
     
-    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Ամսավճար', 'Զեղչ (%)', 'Ստեղծման ամսաթիվ'];
+    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Ամսավճար', 'Զեղչ (%)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
     const rows = students.map(st => [
       st.id,
       `"${(st.full_name || '').replace(/"/g, '""')}"`,
       `"${(st.course_direction || '').replace(/"/g, '""')}"`,
+      `"${(st.course_format || 'Օֆլայն').replace(/"/g, '""')}"`,
       `"${(st.phone || '').replace(/"/g, '""')}"`,
       `"${(st.email || '').replace(/"/g, '""')}"`,
       `"${(st.status || '').replace(/"/g, '""')}"`,
       st.monthly_fee || 0,
       st.discount_percent || 0,
+      st.balance || 0,
       st.created_at ? new Date(st.created_at).toLocaleDateString('hy-AM') : ''
     ]);
 
@@ -196,6 +208,7 @@ const Students = () => {
               <tr className="border-b border-gray-200 text-gray-600">
                 <th className="p-3">Անուն Ազգանուն</th>
                 <th className="p-3">Ուղղություն</th>
+                <th className="p-3">Ձևաչափ</th>
                 <th className="p-3">Հեռախոս</th>
                 <th className="p-3">Էլ. հասցե</th>
                 <th className="p-3">Կարգավիճակ</th>
@@ -211,6 +224,17 @@ const Students = () => {
                 >
                   <td className="p-3 font-medium">{st.full_name}</td>
                   <td className="p-3 text-brand font-semibold">{st.course_direction}</td>
+                  <td className="p-3">
+                    {st.course_format?.toLowerCase().includes('օնլայն') || st.course_format?.toLowerCase().includes('online') ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                        🌐 Օնլայն
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                        🏢 Օֆլայն
+                      </span>
+                    )}
+                  </td>
                   <td className="p-3">{st.phone}</td>
                   <td className="p-3">{st.email}</td>
                   <td className="p-3">
@@ -230,7 +254,7 @@ const Students = () => {
                 </tr>
               ))}
               {students.length === 0 && (
-                <tr><td colSpan="6" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
+                <tr><td colSpan="7" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
@@ -302,6 +326,13 @@ const Students = () => {
                       <option>Հարկային հաշվառում</option>
                       <option>1C ՀԾ ծրագրեր</option>
                       <option>Գլխավոր հաշվապահի դասընթաց</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Ձևաչափ *</label>
+                    <select name="course_format" value={formData.course_format || 'Օֆլայն'} onChange={handleChange} className="glass-input w-full">
+                      <option value="Օֆլայն">🏢 Օֆլայն (Դասասենյակում)</option>
+                      <option value="Օնլայն">🌐 Օնլայն (Հեռավար)</option>
                     </select>
                   </div>
                   <div>

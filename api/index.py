@@ -19,18 +19,28 @@ def init_db_if_needed():
             # Ensure columns exist in DB
             try:
                 import sqlalchemy
-                with engine.connect() as conn:
-                    for col_sql in [
-                        "ALTER TABLE instructors ADD COLUMN rate_per_lesson INTEGER DEFAULT 0;",
-                        "ALTER TABLE courses ADD COLUMN total_lessons INTEGER DEFAULT 0;",
-                        "ALTER TABLE groups ADD COLUMN conducted_lessons INTEGER DEFAULT 0;",
-                        "ALTER TABLE groups ADD COLUMN last_lesson_date VARCHAR;",
-                    ]:
-                        try:
+                ddl_statements = [
+                    "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS rate_per_lesson INTEGER DEFAULT 0;",
+                    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_lessons INTEGER DEFAULT 0;",
+                    "ALTER TABLE groups ADD COLUMN IF NOT EXISTS conducted_lessons INTEGER DEFAULT 0;",
+                    "ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_lesson_date VARCHAR;",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS course_format VARCHAR DEFAULT 'Օֆլայն';",
+                ]
+                for col_sql in ddl_statements:
+                    try:
+                        with engine.connect() as conn:
                             conn.execute(sqlalchemy.text(col_sql))
                             conn.commit()
-                        except Exception:
-                            pass
+                    except Exception as ddl_err:
+                        # Fallback for SQLite without IF NOT EXISTS
+                        if "IF NOT EXISTS" in col_sql:
+                            try:
+                                fallback_sql = col_sql.replace("IF NOT EXISTS ", "")
+                                with engine.connect() as conn:
+                                    conn.execute(sqlalchemy.text(fallback_sql))
+                                    conn.commit()
+                            except Exception:
+                                pass
             except Exception as me:
                 print("Column add error:", me)
 

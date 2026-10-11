@@ -27,43 +27,59 @@ def update_admin_password(db: Session, username: str, new_password: str):
 # Students & Balance
 # ============
 def calculate_student_balance(student):
-    total_paid = sum(p.amount for p in (student.payments or []))
-    
-    monthly_fee = student.monthly_fee or 0
-    if student.discount_percent and student.discount_percent > 0:
-        monthly_fee = int(monthly_fee * (1 - student.discount_percent / 100))
-    
-    lesson_cost = int(round(monthly_fee / 12.0)) if monthly_fee > 0 else 0
-    
-    total_lessons_attended = 0
-    group_names = []
-    for grp in (student.groups or []):
-        total_lessons_attended += (grp.conducted_lessons or 0)
-        if grp.name:
-            group_names.append(grp.name)
-    
-    total_charged = total_lessons_attended * lesson_cost
-    balance = total_paid - total_charged
+    try:
+        total_paid = sum((p.amount or 0) for p in (getattr(student, 'payments', []) or []))
+        
+        monthly_fee = getattr(student, 'monthly_fee', 0) or 0
+        discount = getattr(student, 'discount_percent', 0) or 0
+        if discount > 0:
+            monthly_fee = int(round(monthly_fee * (1 - discount / 100.0)))
+        
+        lesson_cost = int(round(monthly_fee / 12.0)) if monthly_fee > 0 else 0
+        
+        total_lessons_attended = 0
+        group_names = []
+        groups = getattr(student, 'groups', []) or []
+        for grp in groups:
+            total_lessons_attended += (getattr(grp, 'conducted_lessons', 0) or 0)
+            if getattr(grp, 'name', None):
+                group_names.append(grp.name)
+        
+        total_charged = total_lessons_attended * lesson_cost
+        balance = total_paid - total_charged
 
-    return {
-        "total_paid": total_paid,
-        "total_charged": total_charged,
-        "total_lessons_attended": total_lessons_attended,
-        "lesson_cost": lesson_cost,
-        "balance": balance,
-        "group_names": group_names
-    }
+        return {
+            "total_paid": total_paid,
+            "total_charged": total_charged,
+            "total_lessons_attended": total_lessons_attended,
+            "lesson_cost": lesson_cost,
+            "balance": balance,
+            "group_names": group_names
+        }
+    except Exception as e:
+        print("calculate_student_balance error:", e)
+        return {
+            "total_paid": 0,
+            "total_charged": 0,
+            "total_lessons_attended": 0,
+            "lesson_cost": 0,
+            "balance": 0,
+            "group_names": []
+        }
 
 def enrich_student(student):
     if not student:
         return None
-    stats = calculate_student_balance(student)
-    student.total_paid = stats["total_paid"]
-    student.total_charged = stats["total_charged"]
-    student.total_lessons_attended = stats["total_lessons_attended"]
-    student.lesson_cost = stats["lesson_cost"]
-    student.balance = stats["balance"]
-    student.group_names = stats["group_names"]
+    try:
+        stats = calculate_student_balance(student)
+        student.total_paid = stats["total_paid"]
+        student.total_charged = stats["total_charged"]
+        student.total_lessons_attended = stats["total_lessons_attended"]
+        student.lesson_cost = stats["lesson_cost"]
+        student.balance = stats["balance"]
+        student.group_names = stats["group_names"]
+    except Exception as e:
+        print("enrich_student error:", e)
     return student
 
 def get_student_by_email(db: Session, email: str):
@@ -87,17 +103,20 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = Non
                 models.Student.phone.ilike(search_filter)
             )
         )
-    if status and status.strip():
+    if status and status.strip() and status.strip() != "all":
         st = status.strip()
         query = query.filter(models.Student.status.ilike(f"%{st}%"))
-    if course_direction and course_direction.strip():
+    if course_direction and course_direction.strip() and course_direction.strip() != "all":
         cd = course_direction.strip()
         query = query.filter(models.Student.course_direction.ilike(f"%{cd}%"))
         
     total = query.count()
     items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
     for st in items:
-        enrich_student(st)
+        try:
+            enrich_student(st)
+        except Exception as e:
+            print("enrich error on item:", e)
     return {"total": total, "items": items}
 
 def get_debtors(db: Session, course_direction: str = None, search: str = None):

@@ -66,7 +66,7 @@ class StudentBase(BaseModel):
     course_format: Optional[str] = None
     location: Optional[str] = None
     status: Optional[str] = None
-    phone: str
+    phone: Optional[str] = None
     email: Optional[str] = None
     monthly_fee: Optional[int] = 0
     discount_percent: Optional[int] = 0
@@ -95,7 +95,7 @@ class StudentUpdate(BaseModel):
 
 class Student(StudentBase):
     id: int
-    created_at: datetime
+    created_at: Optional[datetime] = None
     payments: List['Payment'] = []
     total_paid: Optional[int] = 0
     total_charged: Optional[int] = 0
@@ -117,7 +117,7 @@ class PaymentCreate(PaymentBase):
 
 class Payment(PaymentBase):
     id: int
-    payment_date: datetime
+    payment_date: Optional[datetime] = None
     class Config:
         orm_mode = True
 
