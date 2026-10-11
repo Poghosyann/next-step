@@ -37,8 +37,8 @@ from sqlalchemy import or_
 def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = None, status: str = None, course_direction: str = None):
     query = db.query(models.Student)
     
-    if search:
-        search_filter = f"%{search}%"
+    if search and search.strip():
+        search_filter = f"%{search.strip()}%"
         query = query.filter(
             or_(
                 models.Student.full_name.ilike(search_filter),
@@ -46,10 +46,12 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = Non
                 models.Student.phone.ilike(search_filter)
             )
         )
-    if status:
-        query = query.filter(models.Student.status == status)
-    if course_direction:
-        query = query.filter(models.Student.course_direction == course_direction)
+    if status and status.strip():
+        st = status.strip()
+        query = query.filter(models.Student.status.ilike(f"%{st}%"))
+    if course_direction and course_direction.strip():
+        cd = course_direction.strip()
+        query = query.filter(models.Student.course_direction.ilike(f"%{cd}%"))
         
     total = query.count()
     items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()

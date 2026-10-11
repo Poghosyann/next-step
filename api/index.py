@@ -25,6 +25,14 @@ def init_db_if_needed():
             try:
                 if not crud.get_admin(db, "admin"):
                     crud.create_admin(db, "admin", "admin123")
+                # Normalize legacy student statuses
+                try:
+                    db.query(models.Student).filter(models.Student.status.ilike("%ընթացիկ%")).update({models.Student.status: "Ընթացիկ"}, synchronize_session=False)
+                    db.query(models.Student).filter(models.Student.status.ilike("%ավարտ%")).update({models.Student.status: "Արխիվ"}, synchronize_session=False)
+                    db.query(models.Student).filter(models.Student.status.ilike("%նոր%")).update({models.Student.status: "Նոր"}, synchronize_session=False)
+                    db.commit()
+                except Exception as ne:
+                    print("Status normalize error:", ne)
             except Exception as e:
                 print("Admin create error:", e)
             finally:

@@ -34,7 +34,7 @@ def seed():
                 email=f"student{i}@example.com", 
                 phone=f"+37477{str(i).zfill(6)}", 
                 course_direction="Ֆինանսական հաշվառում" if i % 2 == 0 else "Հարկային հաշվառում",
-                status="Ընթացիկ ուսանող" if i % 3 == 0 else "Ավարտած",
+                status="Ընթացիկ" if i % 3 == 0 else ("Նոր" if i % 3 == 1 else "Հաստատված"),
                 monthly_fee=95000 if i % 2 == 0 else 85000
             ))
             

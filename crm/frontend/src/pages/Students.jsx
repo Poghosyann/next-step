@@ -11,7 +11,25 @@ const Students = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDirection, setFilterDirection] = useState('');
+  const [coursesList, setCoursesList] = useState([]);
   const limit = 50;
+
+  const defaultDirections = [
+    'Ֆինանսական հաշվառում',
+    'Հարկային հաշվառում',
+    '1C ՀԾ ծրագրեր',
+    'Գլխավոր հաշվապահի դասընթաց',
+    'Excel'
+  ];
+
+  const allDirections = Array.from(new Set([
+    ...defaultDirections,
+    ...coursesList.map(c => c.title)
+  ])).filter(Boolean);
+
+  useEffect(() => {
+    api.get('/courses').then(res => setCoursesList(res.data)).catch(console.error);
+  }, []);
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,12 +42,12 @@ const Students = () => {
   const fetchStudents = async () => {
     try {
       const skip = (page - 1) * limit;
-      let url = `/students?skip=${skip}&limit=${limit}`;
-      if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
-      if (filterStatus) url += `&status=${encodeURIComponent(filterStatus)}`;
-      if (filterDirection) url += `&course_direction=${encodeURIComponent(filterDirection)}`;
-      
-      const response = await api.get(url);
+      const params = { skip, limit };
+      if (searchQuery && searchQuery.trim()) params.search = searchQuery.trim();
+      if (filterStatus && filterStatus.trim()) params.status = filterStatus.trim();
+      if (filterDirection && filterDirection.trim()) params.course_direction = filterDirection.trim();
+
+      const response = await api.get('/students', { params });
       setStudents(response.data.items);
       setTotalStudents(response.data.total);
     } catch (error) {
@@ -71,9 +89,9 @@ const Students = () => {
 
       
       {/* Որոնում և Ֆիլտրեր */}
-      <div className="glass-panel p-4 mb-6 flex flex-col md:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+      <div className="glass-panel p-4 mb-6 flex flex-col md:flex-row gap-4 items-center flex-wrap">
+        <div className="relative flex-1 w-full min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
           <input 
             type="text" 
             placeholder="Որոնել անունով, հեռախոսով կամ էլ-փոստով..." 
@@ -82,19 +100,19 @@ const Students = () => {
             className="glass-input w-full pl-10 py-2"
           />
         </div>
-        <div className="flex gap-4 w-full md:w-auto">
+        <div className="flex gap-4 w-full md:w-auto items-center flex-wrap">
           <div className="relative">
             <select 
               value={filterDirection} 
               onChange={(e) => { setFilterDirection(e.target.value); setPage(1); }}
-              className="glass-input pl-10 py-2 appearance-none w-full md:w-48"
+              className="glass-input pl-10 py-2 appearance-none w-full md:w-52"
             >
               <option value="">Բոլոր ուղղությունները</option>
-              <option value="Ֆինանսական հաշվառում">Ֆինանսական հաշվառում</option>
-              <option value="Հարկային հաշվառում">Հարկային հաշվառում</option>
-              <option value="Excel">Excel</option>
+              {allDirections.map((dir, idx) => (
+                <option key={idx} value={dir}>{dir}</option>
+              ))}
             </select>
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
           </div>
           <div className="relative">
             <select 
@@ -109,8 +127,21 @@ const Students = () => {
               <option value="Անորոշ">Անորոշ</option>
               <option value="Արխիվ">Արխիվ</option>
             </select>
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
           </div>
+          {(searchQuery || filterStatus || filterDirection) && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setFilterStatus('');
+                setFilterDirection('');
+                setPage(1);
+              }}
+              className="text-sm font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 transition px-3 py-2 rounded-lg whitespace-nowrap"
+            >
+              Մաքրել
+            </button>
+          )}
         </div>
       </div>
 
