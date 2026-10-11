@@ -317,14 +317,20 @@ const Groups = () => {
                     <td className="p-4 text-gray-600">{gr.start_time} - {gr.end_time}</td>
                     <td className="p-4">
                       {isNotStarted ? (
-                        <div className="flex items-center gap-2" title="Դասընթացը դեռ չի մեկնարկել">
+                        <div 
+                          className="flex items-center gap-2 cursor-help" 
+                          title={`Դեռ չի մեկնարկել (Մեկնարկը՝ ${gr.start_date || 'Չի նշված'}, Ընդհանուր՝ ${prog.total} դաս)`}
+                        >
                           <div className="w-28 h-2.5 bg-gray-100 rounded-full border border-dashed border-purple-300 overflow-hidden" />
                           <span className="text-xs text-purple-600 font-semibold whitespace-nowrap">
                             Շուտով
                           </span>
                         </div>
                       ) : (
-                        <div className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5" title="Առաջընթաց">
+                        <div 
+                          className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5 cursor-help" 
+                          title={`Արված դասեր՝ ${prog.completed}, Մնացել է՝ ${prog.remaining} (Ընդհանուր՝ ${prog.total} դաս)`}
+                        >
                           <div 
                             className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
                             style={{ width: `${Math.max(0, Math.min(100, prog.percent))}%` }}
