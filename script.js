@@ -80,6 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const name = document.getElementById('name').value;
             const phone = document.getElementById('phone').value;
+            const direction = document.getElementById('course_direction')?.value || 'Ֆինանսական հաշվառում';
             const format = document.querySelector('input[name="format"]:checked').value;
 
             try {
@@ -89,6 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify({
                         full_name: name,
                         phone: phone,
+                        course_direction: direction,
                         course_format: format === 'online' ? 'Օնլայն' : 'Օֆլայն',
                         status: 'Նոր',
                         source: 'Landing Page'

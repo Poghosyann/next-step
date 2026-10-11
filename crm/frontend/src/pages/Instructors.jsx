@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { X, Plus, Trash2, Edit2, Phone } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Instructors = () => {
+  const { addToast } = useToast();
   const [instructors, setInstructors] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({ first_name: '', last_name: '', phone: '', specialization: '' });
@@ -22,20 +24,22 @@ const Instructors = () => {
       setShowModal(false);
       setFormData({ first_name: '', last_name: '', phone: '', specialization: '' });
       fetchInstructors();
+      addToast('Դասախոսը հաջողությամբ պահպանվեց', 'success');
     } catch (err) {
       console.error(err);
-      alert('Error saving instructor');
+      addToast('Սխալ դասախոսին պահպանելիս', 'error');
     }
   };
 
   const handleDelete = async (id) => {
-    if(window.confirm('Are you sure you want to delete this instructor?')) {
+    if(window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս դասախոսին:')) {
       try {
         await api.delete(`/instructors/${id}`);
         fetchInstructors();
+        addToast('Դասախոսը ջնջվեց', 'success');
       } catch (err) {
         console.error(err);
-        alert('Error deleting instructor');
+        addToast('Սխալ դասախոսին ջնջելիս', 'error');
       }
     }
   };

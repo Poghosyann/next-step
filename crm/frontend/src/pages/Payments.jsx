@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { CreditCard, Plus, X } from 'lucide-react';
+import { CreditCard, Plus, X, Search, Check, User } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Payments = () => {
+  const { addToast } = useToast();
   const [payments, setPayments] = useState([]);
   const [students, setStudents] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -12,6 +14,32 @@ const Payments = () => {
     method: 'Կանխիկ',
     notes: ''
   });
+
+  const [studentSearch, setStudentSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredStudents = students.filter(s => {
+    if (!studentSearch.trim()) return true;
+    const q = studentSearch.toLowerCase().trim();
+    return (
+      (s.full_name && s.full_name.toLowerCase().includes(q)) ||
+      (s.phone && s.phone.toLowerCase().includes(q)) ||
+      (s.email && s.email.toLowerCase().includes(q))
+    );
+  });
+
+  const selectedStudent = students.find(s => s.id === parseInt(formData.student_id));
 
   const fetchData = async () => {
     try {
@@ -36,6 +64,10 @@ const Payments = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.student_id) {
+      addToast('Խնդրում ենք ընտրել ուսանողին', 'error');
+      return;
+    }
     try {
       await api.post('/payments', {
         ...formData,
@@ -43,10 +75,18 @@ const Payments = () => {
         amount: parseInt(formData.amount)
       });
       setShowModal(false);
+      setFormData({
+        student_id: '',
+        amount: '',
+        method: 'Կանխիկ',
+        notes: ''
+      });
+      setStudentSearch('');
       fetchData();
+      addToast('Վճարումը հաջողությամբ գրանցվեց', 'success');
     } catch (error) {
       console.error('Error adding payment:', error);
-      alert('Սխալ վճարումը ավելացնելիս:');
+      addToast('Սխալ վճարումը ավելացնելիս', 'error');
     }
   };
 
@@ -110,14 +150,83 @@ const Payments = () => {
             </div>
             
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Ուսանող</label>
-                <select required name="student_id" value={formData.student_id} onChange={handleChange} className="glass-input w-full">
-                  <option value="">Ընտրել ուսանող</option>
-                  {students.map(st => (
-                    <option key={st.id} value={st.id}>{st.full_name}</option>
-                  ))}
-                </select>
+              <div ref={dropdownRef} className="relative">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Ուսանող *</label>
+                
+                {selectedStudent ? (
+                  <div className="flex items-center justify-between p-3 bg-brand/10 border border-brand/30 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <User size={18} className="text-brand" />
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{selectedStudent.full_name}</p>
+                        <p className="text-xs text-gray-500">
+                          {selectedStudent.phone || 'Հեռախոս չկա'} {selectedStudent.course_direction ? `• ${selectedStudent.course_direction}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, student_id: '' });
+                        setStudentSearch('');
+                        setIsDropdownOpen(true);
+                      }}
+                      className="text-xs font-semibold text-gray-500 hover:text-black underline px-2 py-1"
+                    >
+                      Փոխել
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="relative flex items-center">
+                      <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Որոնել ուսանողի (անուն, հեռախոս, էլ-փոստ)..."
+                        value={studentSearch}
+                        onFocus={() => setIsDropdownOpen(true)}
+                        onChange={(e) => {
+                          setStudentSearch(e.target.value);
+                          setIsDropdownOpen(true);
+                        }}
+                        className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
+                      />
+                    </div>
+
+                    {isDropdownOpen && (
+                      <div className="absolute z-20 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl divide-y divide-gray-100">
+                        {filteredStudents.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-gray-400">Ուսանող չի գտնվել</div>
+                        ) : (
+                          filteredStudents.map(st => (
+                            <div
+                              key={st.id}
+                              onClick={() => {
+                                setFormData({ 
+                                  ...formData, 
+                                  student_id: st.id,
+                                  amount: formData.amount || st.monthly_fee || ''
+                                });
+                                setIsDropdownOpen(false);
+                              }}
+                              className="p-3 hover:bg-brand/10 cursor-pointer transition flex items-center justify-between"
+                            >
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm">{st.full_name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''}
+                                </p>
+                              </div>
+                              <span className="text-xs text-brand font-bold bg-brand/10 px-2 py-1 rounded">
+                                Ընտրել
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>

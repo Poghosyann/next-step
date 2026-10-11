@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { User, Plus, X, Search, Filter } from 'lucide-react';
+import { User, Plus, X, Search, Filter, Download } from 'lucide-react';
+import StatusBadge from '../components/StatusBadge';
+import { useToast } from '../context/ToastContext';
 
 const Students = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [students, setStudents] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
   const [page, setPage] = useState(1);
@@ -69,22 +72,63 @@ const Students = () => {
       await api.post('/students', formData);
       setShowModal(false);
       fetchStudents();
+      addToast('Ուսանողը հաջողությամբ ավելացվեց', 'success');
     } catch (error) {
       console.error('Error creating student:', error);
-      alert('Սխալ առաջացավ ուսանողին պահպանելիս:');
+      addToast('Սխալ առաջացավ ուսանողին պահպանելիս', 'error');
     }
+  };
+
+  const exportToCSV = () => {
+    if (students.length === 0) {
+      addToast('Արտահանելու համար տվյալներ չկան', 'error');
+      return;
+    }
+    
+    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Ամսավճար', 'Զեղչ (%)', 'Ստեղծման ամսաթիվ'];
+    const rows = students.map(st => [
+      st.id,
+      `"${(st.full_name || '').replace(/"/g, '""')}"`,
+      `"${(st.course_direction || '').replace(/"/g, '""')}"`,
+      `"${(st.phone || '').replace(/"/g, '""')}"`,
+      `"${(st.email || '').replace(/"/g, '""')}"`,
+      `"${(st.status || '').replace(/"/g, '""')}"`,
+      st.monthly_fee || 0,
+      st.discount_percent || 0,
+      st.created_at ? new Date(st.created_at).toLocaleDateString('hy-AM') : ''
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `students_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast('Excel (CSV) ֆայլը հաջողությամբ ներբեռնվեց', 'success');
   };
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Ուսանողներ</h1>
           <p className="text-gray-500">Կառավարեք ձեր ուսանողների բազան</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="glass-button flex items-center gap-2">
-          <Plus size={18} /> Ավելացնել
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            type="button" 
+            onClick={exportToCSV} 
+            className="px-4 py-2.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
+          >
+            <Download size={16} /> Արտահանել Excel
+          </button>
+          <button onClick={() => setShowModal(true)} className="glass-button flex items-center gap-2">
+            <Plus size={18} /> Ավելացնել
+          </button>
+        </div>
       </div>
 
       
@@ -169,9 +213,7 @@ const Students = () => {
                   <td className="p-3">{st.phone}</td>
                   <td className="p-3">{st.email}</td>
                   <td className="p-3">
-                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
-                      {st.status}
-                    </span>
+                    <StatusBadge status={st.status} />
                   </td>
                 </tr>
               ))}

@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import { ArrowLeft, User, CreditCard, Trash2, Edit2, X } from 'lucide-react';
+import StatusBadge from '../components/StatusBadge';
+import { useToast } from '../context/ToastContext';
 
 const StudentProfile = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [student, setStudent] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({});
@@ -28,10 +31,11 @@ const StudentProfile = () => {
     if (window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս ուսանողին: Այս գործողությունը անդառնալի է։')) {
       try {
         await api.delete(`/students/${id}`);
+        addToast('Ուսանողը հաջողությամբ ջնջվեց', 'success');
         navigate('/students');
       } catch (err) {
         console.error(err);
-        alert('Սխալ ջնջելիս։');
+        addToast('Սխալ ջնջելիս', 'error');
       }
     }
   };
@@ -42,9 +46,10 @@ const StudentProfile = () => {
       await api.put(`/students/${id}`, formData);
       setShowEditModal(false);
       fetchStudent();
+      addToast('Տվյալները հաջողությամբ թարմացվեցին', 'success');
     } catch (err) {
       console.error(err);
-      alert('Սխալ տվյալները թարմացնելիս։');
+      addToast('Սխալ տվյալները թարմացնելիս', 'error');
     }
   };
 
@@ -77,9 +82,9 @@ const StudentProfile = () => {
           <div className="flex flex-col items-center mb-6 pt-4">
             <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
             <p className="text-brand font-bold text-center mt-1">{student.course_direction}</p>
-            <span className="mt-3 px-4 py-1.5 bg-gray-100 rounded-full text-sm font-semibold text-gray-600 border border-gray-200">
-              {student.status}
-            </span>
+            <div className="mt-3">
+              <StatusBadge status={student.status} />
+            </div>
           </div>
           
           <div className="space-y-4 text-gray-700 border-t border-gray-100 pt-5">

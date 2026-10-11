@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { X, Plus, Trash2, Edit2, Users2, Search } from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 const Groups = () => {
+  const { addToast } = useToast();
   const [groups, setGroups] = useState([]);
   const [courses, setCourses] = useState([]);
   const [instructors, setInstructors] = useState([]);
@@ -132,9 +134,10 @@ const Groups = () => {
       setSelectedStudents([]);
       setSelectedDays([]);
       fetchData();
+      addToast(editingGroupId ? 'Խմբի տվյալները թարմացվեցին' : 'Խումբը հաջողությամբ ստեղծվեց', 'success');
     } catch (err) {
       console.error(err);
-      alert('Սխալ խումբը պահպանելիս');
+      addToast('Սխալ խումբը պահպանելիս', 'error');
     }
   };
 
@@ -143,9 +146,10 @@ const Groups = () => {
       try {
         await api.delete(`/groups/${id}`);
         fetchData();
+        addToast('Խումբը ջնջվեց', 'success');
       } catch (err) {
         console.error(err);
-        alert('Սխալ խումբը ջնջելիս');
+        addToast('Սխալ խումբը ջնջելիս', 'error');
       }
     }
   };
