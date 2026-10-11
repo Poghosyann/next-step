@@ -48,7 +48,7 @@ const Login = ({ setAuth }) => {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-md p-3 text-gray-800 focus:border-brand focus:ring-1 focus:ring-brand outline-none transition"
-              placeholder="admin"
+              placeholder="Մուտքանուն"
             />
           </div>
           
@@ -71,10 +71,6 @@ const Login = ({ setAuth }) => {
             Մուտք գործել
           </button>
         </form>
-        
-        <div className="mt-6 text-center text-gray-400 text-sm">
-          <p>Թեստային տվյալներ՝ admin / admin123</p>
-        </div>
       </div>
     </div>
   );
