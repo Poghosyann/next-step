@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { X, Plus, Trash2, Edit2, Users2 } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Users2, Search } from 'lucide-react';
 
 const Groups = () => {
   const [groups, setGroups] = useState([]);
@@ -18,8 +18,43 @@ const Groups = () => {
   const [formData, setFormData] = useState(initialForm);
 
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
+  const studentDropdownRef = useRef(null);
+
   const allDays = ['Երկ.', 'Երք.', 'Չրք.', 'Հնգ.', 'Ուրբ.', 'Շբթ.', 'Կիր.'];
   const [selectedDays, setSelectedDays] = useState([]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (studentDropdownRef.current && !studentDropdownRef.current.contains(event.target)) {
+        setIsStudentDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const unselectedStudents = students.filter(
+    s => !selectedStudents.some(sel => sel.id === s.id)
+  );
+
+  const filteredAvailableStudents = unselectedStudents.filter(s => {
+    if (!studentSearch.trim()) return true;
+    const query = studentSearch.toLowerCase().trim();
+    return (
+      (s.full_name && s.full_name.toLowerCase().includes(query)) ||
+      (s.phone && s.phone.toLowerCase().includes(query)) ||
+      (s.email && s.email.toLowerCase().includes(query)) ||
+      (s.course_direction && s.course_direction.toLowerCase().includes(query))
+    );
+  });
+
+  const addStudent = (student) => {
+    if (!selectedStudents.some(s => s.id === student.id)) {
+      setSelectedStudents([...selectedStudents, student]);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -127,6 +162,8 @@ const Groups = () => {
     });
     setSelectedDays(group.days ? group.days.split(', ') : []);
     setSelectedStudents(group.students || []);
+    setStudentSearch('');
+    setIsStudentDropdownOpen(false);
     setEditingGroupId(group.id);
     setShowModal(true);
   };
@@ -135,6 +172,8 @@ const Groups = () => {
     setFormData(initialForm);
     setSelectedDays([]);
     setSelectedStudents([]);
+    setStudentSearch('');
+    setIsStudentDropdownOpen(false);
     setEditingGroupId(null);
     setShowModal(true);
   };
@@ -239,23 +278,93 @@ const Groups = () => {
                 </select>
               </div>
 
-              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <label className="block text-sm font-bold text-gray-700">Ուսանողներ</label>
-                  <select onChange={handleStudentSelect} className="glass-input text-sm py-1.5 border-gray-300">
-                    <option value="">+ Ավելացնել ուսանող</option>
-                    {students.map(st => (
-                      <option key={st.id} value={st.id}>{st.full_name}</option>
-                    ))}
-                  </select>
+              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm" ref={studentDropdownRef}>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-bold text-gray-700">
+                    Ուսանողներ <span className="text-gray-400 font-normal">({selectedStudents.length} ընտրված)</span>
+                  </label>
                 </div>
                 
-                <div className="flex flex-wrap gap-2 p-3 min-h-[80px] bg-gray-50 border border-gray-200 rounded-md">
-                  {selectedStudents.length === 0 && <span className="text-gray-400 text-sm">Ուսանողներ ընտրված չեն...</span>}
+                {/* Որոնման դաշտ */}
+                <div className="relative mb-3">
+                  <div className="relative flex items-center">
+                    <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
+                    <input 
+                      type="text"
+                      placeholder="Որոնել ուսանողի (անուն, հեռախոս, էլ-փոստ)..."
+                      value={studentSearch}
+                      onFocus={() => setIsStudentDropdownOpen(true)}
+                      onChange={(e) => {
+                        setStudentSearch(e.target.value);
+                        setIsStudentDropdownOpen(true);
+                      }}
+                      className="glass-input w-full pl-9 pr-8 py-2 text-sm"
+                    />
+                    {studentSearch && (
+                      <button 
+                        type="button" 
+                        onClick={() => setStudentSearch('')} 
+                        className="absolute right-3 text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Բացվող ցանկ՝ որոնման արդյունքներով */}
+                  {isStudentDropdownOpen && (
+                    <div className="absolute z-20 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl divide-y divide-gray-100">
+                      <div className="p-2 text-xs font-semibold text-gray-400 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+                        <span>Գտնված ուսանողներ ({filteredAvailableStudents.length})</span>
+                        <button 
+                          type="button" 
+                          onClick={() => setIsStudentDropdownOpen(false)}
+                          className="text-gray-500 hover:text-black font-medium"
+                        >
+                          Փակել ✕
+                        </button>
+                      </div>
+                      {filteredAvailableStudents.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-400">
+                          {unselectedStudents.length === 0 
+                            ? 'Բոլոր ուսանողներն արդեն ավելացված են այս խմբում' 
+                            : 'Ուսանող չի գտնվել'}
+                        </div>
+                      ) : (
+                        filteredAvailableStudents.map(st => (
+                          <div 
+                            key={st.id} 
+                            onClick={() => addStudent(st)}
+                            className="p-3 hover:bg-brand/10 cursor-pointer transition flex items-center justify-between group"
+                          >
+                            <div>
+                              <p className="font-medium text-gray-800 text-sm">{st.full_name}</p>
+                              <p className="text-xs text-gray-500">
+                                {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''} {st.status ? `• ${st.status}` : ''}
+                              </p>
+                            </div>
+                            <span className="text-xs bg-brand/10 group-hover:bg-brand group-hover:text-black font-semibold text-gray-700 px-2.5 py-1 rounded transition">
+                              + Ավելացնել
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Ընտրված ուսանողների ցանկ */}
+                <div className="flex flex-wrap gap-2 p-3 min-h-[70px] bg-gray-50 border border-gray-200 rounded-md">
+                  {selectedStudents.length === 0 && (
+                    <span className="text-gray-400 text-sm flex items-center">
+                      Խմբում դեռ ուսանողներ չկան: Օգտագործեք վերևի որոնումը՝ ուսանողներ ավելացնելու համար:
+                    </span>
+                  )}
                   {selectedStudents.map(st => (
                     <div key={st.id} className="flex items-center gap-2 bg-brand/10 border border-brand/30 text-gray-800 px-3 py-1.5 rounded-full text-sm font-medium">
-                      {st.full_name}
-                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1 text-gray-500">
+                      <span>{st.full_name}</span>
+                      {st.phone && <span className="text-xs text-gray-500 font-normal">({st.phone})</span>}
+                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1 text-gray-500" title="Հեռացնել խմբից">
                         <X size={14} strokeWidth={3} />
                       </button>
                     </div>
