@@ -105,14 +105,14 @@ const Payments = () => {
       <div className="glass-panel overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-800">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="p-4 font-bold text-gray-600">ID</th>
-                <th className="p-4 font-bold text-gray-600">Ուսանող</th>
-                <th className="p-4 font-bold text-gray-600">Գումար</th>
-                <th className="p-4 font-bold text-gray-600">Եղանակ</th>
-                <th className="p-4 font-bold text-gray-600">Ամսաթիվ</th>
-                <th className="p-4 font-bold text-gray-600">Նշումներ</th>
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                <th className="p-3.5 whitespace-nowrap">ID</th>
+                <th className="p-3.5 whitespace-nowrap">Ուսանող</th>
+                <th className="p-3.5 whitespace-nowrap">Գումար</th>
+                <th className="p-3.5 whitespace-nowrap">Եղանակ</th>
+                <th className="p-3.5 whitespace-nowrap">Ամսաթիվ</th>
+                <th className="p-3.5 whitespace-nowrap">Նշումներ</th>
               </tr>
             </thead>
             <tbody>
@@ -120,14 +120,14 @@ const Payments = () => {
                 const st = students.find(s => s.id === pay.student_id);
                 return (
                   <tr key={pay.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="p-4 font-mono text-gray-400">#{pay.id}</td>
-                    <td className="p-4 font-semibold">{st ? st.full_name : `Student ID: ${pay.student_id}`}</td>
-                    <td className="p-4 text-green-600 font-bold">{pay.amount.toLocaleString()} ֏</td>
-                    <td className="p-4">
+                    <td className="p-3.5 font-mono text-gray-400 whitespace-nowrap">#{pay.id}</td>
+                    <td className="p-3.5 font-semibold whitespace-nowrap">{st ? st.full_name : `Student ID: ${pay.student_id}`}</td>
+                    <td className="p-3.5 text-emerald-600 font-bold whitespace-nowrap">{pay.amount.toLocaleString()} ֏</td>
+                    <td className="p-3.5 whitespace-nowrap">
                       <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">{pay.method}</span>
                     </td>
-                    <td className="p-4 text-gray-600">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
-                    <td className="p-4 text-gray-500 text-sm">{pay.notes}</td>
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
+                    <td className="p-3.5 text-gray-500 text-sm whitespace-nowrap">{pay.notes || '-'}</td>
                   </tr>
                 );
               })}

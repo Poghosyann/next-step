@@ -165,26 +165,26 @@ const Debts = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-800">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-gray-500 text-sm">
-                <th className="p-4 font-semibold">Ուսանող</th>
-                <th className="p-4 font-semibold">Հեռախոսահամար</th>
-                <th className="p-4 font-semibold">Ուղղություն / Խումբ</th>
-                <th className="p-4 font-semibold text-center">1 Դասի Արժեք</th>
-                <th className="p-4 font-semibold text-center">Արված Դասեր</th>
-                <th className="p-4 font-semibold text-right">Վճարված Է</th>
-                <th className="p-4 font-semibold text-right">Պարտքի Չափ</th>
-                <th className="p-4 font-semibold text-right">Գործողություն</th>
+              <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                <th className="p-3.5 whitespace-nowrap">Ուսանող</th>
+                <th className="p-3.5 whitespace-nowrap">Հեռախոսահամար</th>
+                <th className="p-3.5 whitespace-nowrap">Ուղղություն / Խումբ</th>
+                <th className="p-3.5 text-center whitespace-nowrap">1 Դասի Արժեք</th>
+                <th className="p-3.5 text-center whitespace-nowrap">Արված Դասեր</th>
+                <th className="p-3.5 text-right whitespace-nowrap">Վճարված Է</th>
+                <th className="p-3.5 text-right whitespace-nowrap">Պարտքի Չափ</th>
+                <th className="p-3.5 text-right whitespace-nowrap">Գործողություն</th>
               </tr>
             </thead>
             <tbody>
               {debtors.map((st) => (
                 <tr key={st.id} className="border-b border-gray-100 hover:bg-red-50/20 transition">
-                  <td className="p-4">
+                  <td className="p-3.5 whitespace-nowrap">
                     <div className="font-bold text-gray-800">{st.full_name}</div>
                     <div className="text-xs text-gray-400">{st.email}</div>
                   </td>
-                  <td className="p-4 font-medium text-gray-700">{st.phone}</td>
-                  <td className="p-4">
+                  <td className="p-3.5 font-medium text-gray-700 whitespace-nowrap">{st.phone}</td>
+                  <td className="p-3.5 whitespace-nowrap">
                     <div className="text-brand font-semibold text-sm">{st.course_direction}</div>
                     {st.group_names && st.group_names.length > 0 ? (
                       <div className="text-xs text-gray-500 mt-0.5">
@@ -194,23 +194,23 @@ const Debts = () => {
                       <div className="text-xs text-gray-400 italic">Խմբին կցված չէ</div>
                     )}
                   </td>
-                  <td className="p-4 text-center text-sm font-medium text-gray-600">
+                  <td className="p-3.5 text-center text-sm font-medium text-gray-600 whitespace-nowrap">
                     {(st.lesson_cost || 0).toLocaleString()} ֏
                   </td>
-                  <td className="p-4 text-center">
+                  <td className="p-3.5 text-center whitespace-nowrap">
                     <span className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold">
                       {st.total_lessons_attended || 0} դաս
                     </span>
                   </td>
-                  <td className="p-4 text-right font-medium text-gray-700">
+                  <td className="p-3.5 text-right font-medium text-gray-700 whitespace-nowrap">
                     {(st.total_paid || 0).toLocaleString()} ֏
                   </td>
-                  <td className="p-4 text-right">
+                  <td className="p-3.5 text-right whitespace-nowrap">
                     <span className="inline-block bg-red-100 text-red-700 border border-red-200 px-2.5 py-1 rounded-md font-bold text-sm">
                       {st.balance?.toLocaleString()} ֏
                     </span>
                   </td>
-                  <td className="p-4 text-right">
+                  <td className="p-3.5 text-right whitespace-nowrap">
                     <div className="flex justify-end items-center gap-2">
                       <button
                         onClick={() => handleQuickPay(st)}

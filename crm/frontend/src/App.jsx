@@ -16,6 +16,17 @@ import { ToastProvider } from './context/ToastContext';
 function App() {
 
   const [isAuth, setIsAuth] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('crm_sidebar_collapsed') === 'true';
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem('crm_sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('crm_token');
@@ -39,9 +50,9 @@ function App() {
   return (
     <ToastProvider>
       <Router basename="/crm">
-        <div className="flex min-h-screen">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto">
+        <div className="flex min-h-screen bg-gray-50/50">
+          <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
+          <main className="flex-1 overflow-x-auto min-w-0">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />

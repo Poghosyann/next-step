@@ -235,18 +235,18 @@ const Groups = () => {
       </div>
 
       <div className="glass-panel overflow-hidden">
-        <div className="p-4 overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-800">
             <thead>
-              <tr className="border-b border-gray-100 text-gray-500 text-sm">
-                <th className="p-4 font-semibold">Խմբի Անվանում</th>
-                <th className="p-4 font-semibold">Դասընթաց</th>
-                <th className="p-4 font-semibold">Դասախոս</th>
-                <th className="p-4 font-semibold">Օրեր</th>
-                <th className="p-4 font-semibold">Ժամեր</th>
-                <th className="p-4 font-semibold">Առաջընթաց</th>
-                <th className="p-4 font-semibold">Ուսանողներ</th>
-                <th className="p-4 font-semibold text-right">Գործողություն</th>
+              <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                <th className="p-3.5 whitespace-nowrap">Խմբի Անվանում</th>
+                <th className="p-3.5 whitespace-nowrap">Դասընթաց</th>
+                <th className="p-3.5 whitespace-nowrap">Դասախոս</th>
+                <th className="p-3.5 whitespace-nowrap">Օրեր</th>
+                <th className="p-3.5 whitespace-nowrap">Ժամեր</th>
+                <th className="p-3.5 whitespace-nowrap">Առաջընթաց</th>
+                <th className="p-3.5 whitespace-nowrap">Ուսանողներ</th>
+                <th className="p-3.5 font-semibold text-right whitespace-nowrap">Գործողություն</th>
               </tr>
             </thead>
             <tbody>
@@ -276,7 +276,7 @@ const Groups = () => {
                         : 'border-gray-50 hover:bg-gray-50 border-l-4 border-l-transparent'
                     }`}
                   >
-                    <td className="p-4 font-bold text-gray-800">
+                    <td className="p-3.5 font-bold text-gray-800 whitespace-nowrap">
                       <div className="flex flex-col gap-1 items-start">
                         <div className="flex items-center gap-2">
                           <Users2 size={16} className={isNotStarted ? "text-purple-600" : "text-brand"} />
@@ -289,9 +289,9 @@ const Groups = () => {
                         )}
                       </div>
                     </td>
-                    <td className="p-4 text-gray-600">
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">
                       <div>
-                        <span>{gr.course?.title}</span>
+                        <span className="font-medium text-gray-800">{gr.course?.title}</span>
                         {gr.course?.total_lessons > 0 && (
                           <span className="text-[11px] text-gray-400 block font-normal">
                             ({gr.course.total_lessons} դաս)
@@ -299,10 +299,10 @@ const Groups = () => {
                         )}
                       </div>
                     </td>
-                    <td className="p-4 text-gray-600">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : ''}</td>
-                    <td className="p-4 text-brand font-medium">{gr.days}</td>
-                    <td className="p-4 text-gray-600">{gr.start_time} - {gr.end_time}</td>
-                    <td className="p-4">
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : ''}</td>
+                    <td className="p-3.5 text-brand font-medium whitespace-nowrap">{gr.days}</td>
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{gr.start_time} - {gr.end_time}</td>
+                    <td className="p-3.5 whitespace-nowrap">
                       {isNotStarted ? (
                         <div 
                           className="flex items-center gap-2 cursor-help" 
@@ -345,18 +345,20 @@ const Groups = () => {
                         </div>
                       )}
                     </td>
-                    <td className="p-4">
+                    <td className="p-3.5 whitespace-nowrap">
                       <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
                         {gr.students?.length || 0} Ուսանող
                       </span>
                     </td>
-                    <td className="p-4 text-right flex justify-end gap-2">
-                      <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition" title="Խմբագրել">
-                        <Edit2 size={16} />
-                      </button>
-                      <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition" title="Ջնջել">
-                        <Trash2 size={16} />
-                      </button>
+                    <td className="p-3.5 text-right whitespace-nowrap">
+                      <div className="flex justify-end gap-2">
+                        <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition" title="Խմբագրել">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition" title="Ջնջել">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );

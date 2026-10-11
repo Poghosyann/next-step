@@ -202,17 +202,17 @@ const Students = () => {
       </div>
 
       <div className="glass-panel overflow-hidden">
-        <div className="p-4 border-b border-gray-200 overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-gray-800">
             <thead>
-              <tr className="border-b border-gray-200 text-gray-600">
-                <th className="p-3">Անուն Ազգանուն</th>
-                <th className="p-3">Ուղղություն</th>
-                <th className="p-3">Ձևաչափ</th>
-                <th className="p-3">Հեռախոս</th>
-                <th className="p-3">Էլ. հասցե</th>
-                <th className="p-3">Կարգավիճակ</th>
-                <th className="p-3 text-right">Բալանս</th>
+              <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
+                <th className="p-3.5 whitespace-nowrap">Անուն Ազգանուն</th>
+                <th className="p-3.5 whitespace-nowrap">Ուղղություն</th>
+                <th className="p-3.5 whitespace-nowrap">Ձևաչափ</th>
+                <th className="p-3.5 whitespace-nowrap">Հեռախոս</th>
+                <th className="p-3.5 whitespace-nowrap">Էլ. հասցե</th>
+                <th className="p-3.5 whitespace-nowrap">Կարգավիճակ</th>
+                <th className="p-3.5 text-right whitespace-nowrap">Բալանս</th>
               </tr>
             </thead>
             <tbody>
@@ -222,9 +222,9 @@ const Students = () => {
                   onClick={() => navigate(`/students/${st.id}`)}
                   className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
                 >
-                  <td className="p-3 font-medium">{st.full_name}</td>
-                  <td className="p-3 text-brand font-semibold">{st.course_direction}</td>
-                  <td className="p-3">
+                  <td className="p-3.5 font-semibold text-gray-800 whitespace-nowrap">{st.full_name}</td>
+                  <td className="p-3.5 text-brand font-semibold whitespace-nowrap">{st.course_direction}</td>
+                  <td className="p-3.5 whitespace-nowrap">
                     {st.course_format?.toLowerCase().includes('օնլայն') || st.course_format?.toLowerCase().includes('online') ? (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
                         🌐 Օնլայն
@@ -235,12 +235,12 @@ const Students = () => {
                       </span>
                     )}
                   </td>
-                  <td className="p-3">{st.phone}</td>
-                  <td className="p-3">{st.email}</td>
-                  <td className="p-3">
+                  <td className="p-3.5 text-gray-600 whitespace-nowrap">{st.phone}</td>
+                  <td className="p-3.5 text-gray-500 whitespace-nowrap">{st.email}</td>
+                  <td className="p-3.5 whitespace-nowrap">
                     <StatusBadge status={st.status} />
                   </td>
-                  <td className="p-3 text-right font-medium">
+                  <td className="p-3.5 text-right font-medium whitespace-nowrap">
                     {st.balance > 0 ? (
                       <span className="inline-block text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold text-xs">
                         +{st.balance?.toLocaleString()} ֏
