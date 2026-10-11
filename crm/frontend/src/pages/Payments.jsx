@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { CreditCard, Plus, X, Search, Check, User } from 'lucide-react';
+import { Plus, X, Search, User } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Payments = () => {
@@ -158,7 +158,14 @@ const Payments = () => {
                     <div className="flex items-center gap-2">
                       <User size={18} className="text-brand" />
                       <div>
-                        <p className="font-bold text-gray-800 text-sm">{selectedStudent.full_name}</p>
+                        <p className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                          <span>{selectedStudent.full_name}</span>
+                          {selectedStudent.balance !== undefined && (
+                            <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${selectedStudent.balance > 0 ? 'text-emerald-700 bg-emerald-100' : 'text-red-600 bg-red-100'}`}>
+                              Բալանս՝ {selectedStudent.balance > 0 ? `+${selectedStudent.balance.toLocaleString()} ֏` : `${selectedStudent.balance.toLocaleString()} ֏`}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-xs text-gray-500">
                           {selectedStudent.phone || 'Հեռախոս չկա'} {selectedStudent.course_direction ? `• ${selectedStudent.course_direction}` : ''}
                         </p>
@@ -205,7 +212,7 @@ const Payments = () => {
                                 setFormData({ 
                                   ...formData, 
                                   student_id: st.id,
-                                  amount: formData.amount || st.monthly_fee || ''
+                                  amount: formData.amount || (st.balance < 0 ? Math.abs(st.balance) : st.monthly_fee) || ''
                                 });
                                 setIsDropdownOpen(false);
                               }}
@@ -217,9 +224,16 @@ const Payments = () => {
                                   {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''}
                                 </p>
                               </div>
-                              <span className="text-xs text-brand font-bold bg-brand/10 px-2 py-1 rounded">
-                                Ընտրել
-                              </span>
+                              <div className="flex items-center gap-2">
+                                {st.balance !== undefined && (
+                                  <span className={`text-xs px-2 py-0.5 rounded font-bold ${st.balance > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
+                                    {st.balance > 0 ? `+${st.balance.toLocaleString()} ֏` : `${st.balance.toLocaleString()} ֏`}
+                                  </span>
+                                )}
+                                <span className="text-xs text-brand font-bold bg-brand/10 px-2 py-1 rounded">
+                                  Ընտրել
+                                </span>
+                              </div>
                             </div>
                           ))
                         )}

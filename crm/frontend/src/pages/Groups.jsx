@@ -15,7 +15,8 @@ const Groups = () => {
 
   const initialForm = {
     name: '', course_id: '', instructor_id: '',
-    start_date: '', start_time: '', end_time: '', days: ''
+    start_date: '', start_time: '', end_time: '', days: '',
+    conducted_lessons: 0
   };
   const [formData, setFormData] = useState(initialForm);
 
@@ -28,19 +29,11 @@ const Groups = () => {
   const [selectedDays, setSelectedDays] = useState([]);
 
   const getGroupProgress = (gr) => {
-    if (gr.progress_percent !== undefined && gr.is_started !== undefined) {
-      return {
-        isStarted: gr.is_started,
-        completed: gr.completed_lessons || 0,
-        remaining: gr.remaining_lessons || 0,
-        percent: gr.progress_percent || 0,
-        total: gr.course?.total_lessons || 0
-      };
-    }
-
     const total = gr.course?.total_lessons || 0;
+    const completed = gr.conducted_lessons ?? gr.completed_lessons ?? 0;
+
     if (!gr.start_date) {
-      return { isStarted: false, completed: 0, remaining: total, percent: 0, total };
+      return { isStarted: false, completed, remaining: total, percent: 0, total };
     }
 
     const today = new Date();
@@ -51,36 +44,6 @@ const Groups = () => {
 
     if (startDate > today) {
       return { isStarted: false, completed: 0, remaining: total, percent: 0, total };
-    }
-
-    const dayPatterns = [
-      { dayIdx: 1, patterns: ['երկ'] },
-      { dayIdx: 2, patterns: ['երք', 'երեք'] },
-      { dayIdx: 3, patterns: ['չրք', 'չոր'] },
-      { dayIdx: 4, patterns: ['հնգ', 'հինգ'] },
-      { dayIdx: 5, patterns: ['ուրբ', 'ուբթ', 'ուր'] },
-      { dayIdx: 6, patterns: ['շբթ', 'շաբ'] },
-      { dayIdx: 0, patterns: ['կիր'] },
-    ];
-
-    const groupDaysStr = (gr.days || '').toLowerCase();
-    const activeDays = new Set();
-    dayPatterns.forEach(({ dayIdx, patterns }) => {
-      if (patterns.some(p => groupDaysStr.includes(p))) {
-        activeDays.add(dayIdx);
-      }
-    });
-
-    let completed = 0;
-    if (activeDays.size > 0) {
-      const cur = new Date(startDate);
-      while (cur <= today) {
-        if (activeDays.has(cur.getDay())) {
-          completed++;
-          if (total > 0 && completed >= total) break;
-        }
-        cur.setDate(cur.getDate() + 1);
-      }
     }
 
     const remaining = total > 0 ? Math.max(0, total - completed) : 0;
@@ -163,6 +126,7 @@ const Groups = () => {
     e.preventDefault();
     const payload = {
       ...formData,
+      conducted_lessons: parseInt(formData.conducted_lessons, 10) || 0,
       days: selectedDays.join(', ')
     };
 
@@ -207,6 +171,28 @@ const Groups = () => {
     }
   };
 
+  const handleConductLesson = async (groupId) => {
+    try {
+      const res = await api.post(`/groups/${groupId}/conduct-lesson`);
+      setGroups(groups.map(g => g.id === groupId ? res.data : g));
+      addToast('Դասը հաջողությամբ գրանցվեց (+1 դաս)', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասը գրանցելիս', 'error');
+    }
+  };
+
+  const handleRevertLesson = async (groupId) => {
+    try {
+      const res = await api.post(`/groups/${groupId}/revert-lesson`);
+      setGroups(groups.map(g => g.id === groupId ? res.data : g));
+      addToast('Դասը չեղարկվեց (-1 դաս)', 'info');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասը չեղարկելիս', 'error');
+    }
+  };
+
   const openEditModal = (group) => {
     setFormData({
       name: group.name || '',
@@ -215,7 +201,8 @@ const Groups = () => {
       start_date: group.start_date || '',
       start_time: group.start_time || '',
       end_time: group.end_time || '',
-      days: group.days || ''
+      days: group.days || '',
+      conducted_lessons: group.conducted_lessons ?? group.completed_lessons ?? 0
     });
     setSelectedDays(group.days ? group.days.split(', ') : []);
     setSelectedStudents(group.students || []);
@@ -327,14 +314,34 @@ const Groups = () => {
                           </span>
                         </div>
                       ) : (
-                        <div 
-                          className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5 cursor-help" 
-                          title={`Արված դասեր՝ ${prog.completed}, Մնացել է՝ ${prog.remaining} (Ընդհանուր՝ ${prog.total} դաս)`}
-                        >
+                        <div className="flex flex-col gap-1.5 items-start">
                           <div 
-                            className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
-                            style={{ width: `${Math.max(0, Math.min(100, prog.percent))}%` }}
-                          />
+                            className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5 cursor-help" 
+                            title={`Արված դասեր՝ ${prog.completed}, Մնացել է՝ ${prog.remaining} (Ընդհանուր՝ ${prog.total} դաս)`}
+                          >
+                            <div 
+                              className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
+                              style={{ width: `${Math.max(0, Math.min(100, prog.percent))}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleConductLesson(gr.id)}
+                              className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[11px] font-bold flex items-center gap-0.5 transition"
+                              title="Գրանցել արված դաս (+1)"
+                            >
+                              <Plus size={11} /> Դաս
+                            </button>
+                            {prog.completed > 0 && (
+                              <button
+                                onClick={() => handleRevertLesson(gr.id)}
+                                className="px-1.5 py-0.5 bg-gray-50 hover:bg-gray-100 text-gray-500 border border-gray-200 rounded text-[11px] font-semibold transition"
+                                title="Չեղարկել արված դաս (-1)"
+                              >
+                                -1
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </td>
@@ -498,10 +505,14 @@ const Groups = () => {
               <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
                 <label className="block text-sm font-bold text-gray-700 mb-4">Ժամանակացույց</label>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-2">Սկզբի ամսաթիվ</label>
                     <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="glass-input w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-500 mb-2">Արված դասեր</label>
+                    <input type="number" name="conducted_lessons" min="0" value={formData.conducted_lessons ?? 0} onChange={handleChange} className="glass-input w-full" placeholder="0" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-gray-500 mb-2">Սկիզբ (Ժամ)</label>

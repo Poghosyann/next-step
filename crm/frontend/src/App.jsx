@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,7 @@ import Instructors from './pages/Instructors';
 import Groups from './pages/Groups';
 import Payments from './pages/Payments';
 import StudentProfile from './pages/StudentProfile';
+import Debts from './pages/Debts';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import { ToastProvider } from './context/ToastContext';
@@ -45,6 +46,7 @@ function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
               <Route path="/students/:id" element={<StudentProfile />} />
+              <Route path="/debts" element={<Debts />} />
               <Route path="/courses" element={<Courses />} />
               <Route path="/instructors" element={<Instructors />} />
               <Route path="/groups" element={<Groups />} />

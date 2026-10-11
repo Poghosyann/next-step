@@ -20,9 +20,17 @@ def init_db_if_needed():
             try:
                 import sqlalchemy
                 with engine.connect() as conn:
-                    conn.execute(sqlalchemy.text("ALTER TABLE instructors ADD COLUMN IF NOT EXISTS rate_per_lesson INTEGER DEFAULT 0;"))
-                    conn.execute(sqlalchemy.text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_lessons INTEGER DEFAULT 0;"))
-                    conn.commit()
+                    for col_sql in [
+                        "ALTER TABLE instructors ADD COLUMN rate_per_lesson INTEGER DEFAULT 0;",
+                        "ALTER TABLE courses ADD COLUMN total_lessons INTEGER DEFAULT 0;",
+                        "ALTER TABLE groups ADD COLUMN conducted_lessons INTEGER DEFAULT 0;",
+                        "ALTER TABLE groups ADD COLUMN last_lesson_date VARCHAR;",
+                    ]:
+                        try:
+                            conn.execute(sqlalchemy.text(col_sql))
+                            conn.commit()
+                        except Exception:
+                            pass
             except Exception as me:
                 print("Column add error:", me)
 
@@ -229,3 +237,26 @@ def add_students_to_group(group_id: int, request: schemas.GroupStudentAdd, db: S
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     return group
+
+@app.post("/api/groups/{group_id}/conduct-lesson", response_model=schemas.Group)
+def conduct_lesson(group_id: int, db: Session = Depends(get_db)):
+    grp = crud.conduct_group_lesson(db, group_id)
+    if not grp:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return grp
+
+@app.post("/api/groups/{group_id}/revert-lesson", response_model=schemas.Group)
+def revert_lesson(group_id: int, db: Session = Depends(get_db)):
+    grp = crud.revert_group_lesson(db, group_id)
+    if not grp:
+        raise HTTPException(status_code=404, detail="Group not found")
+    return grp
+
+@app.get("/api/debts", response_model=schemas.DebtsSummary)
+def read_debts(
+    course_direction: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    return crud.get_debtors(db, course_direction=course_direction, search=search)
+

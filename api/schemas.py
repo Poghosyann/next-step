@@ -97,6 +97,12 @@ class Student(StudentBase):
     id: int
     created_at: datetime
     payments: List['Payment'] = []
+    total_paid: Optional[int] = 0
+    total_charged: Optional[int] = 0
+    total_lessons_attended: Optional[int] = 0
+    lesson_cost: Optional[int] = 0
+    balance: Optional[int] = 0
+    group_names: Optional[List[str]] = []
     class Config:
         orm_mode = True
 
@@ -134,6 +140,8 @@ class GroupBase(BaseModel):
     end_time: Optional[str] = None
     days: Optional[str] = None
     notes: Optional[str] = None
+    conducted_lessons: Optional[int] = 0
+    last_lesson_date: Optional[str] = None
 
 class GroupCreate(GroupBase):
     pass
@@ -147,6 +155,8 @@ class GroupUpdate(BaseModel):
     end_time: Optional[str] = None
     days: Optional[str] = None
     notes: Optional[str] = None
+    conducted_lessons: Optional[int] = None
+    last_lesson_date: Optional[str] = None
 
 class Group(GroupBase):
     id: int
@@ -169,3 +179,8 @@ class GroupStudentAdd(BaseModel):
 class PasswordChange(BaseModel):
     current_password: str
     new_password: str
+
+class DebtsSummary(BaseModel):
+    total_debtors: int
+    total_debt_amount: int
+    items: List[Student]

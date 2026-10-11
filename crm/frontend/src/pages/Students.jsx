@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { User, Plus, X, Search, Filter, Download } from 'lucide-react';
+import { Plus, X, Search, Filter, Download } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -42,7 +42,7 @@ const Students = () => {
     comment: '', urgent_notes: ''
   });
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     try {
       const skip = (page - 1) * limit;
       const params = { skip, limit };
@@ -56,11 +56,11 @@ const Students = () => {
     } catch (error) {
       console.error('Error fetching students:', error);
     }
-  };
+  }, [page, searchQuery, filterStatus, filterDirection]);
 
   useEffect(() => {
     fetchStudents();
-  }, [page, searchQuery, filterStatus, filterDirection]);
+  }, [fetchStudents]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -199,6 +199,7 @@ const Students = () => {
                 <th className="p-3">Հեռախոս</th>
                 <th className="p-3">Էլ. հասցե</th>
                 <th className="p-3">Կարգավիճակ</th>
+                <th className="p-3 text-right">Բալանս</th>
               </tr>
             </thead>
             <tbody>
@@ -215,10 +216,21 @@ const Students = () => {
                   <td className="p-3">
                     <StatusBadge status={st.status} />
                   </td>
+                  <td className="p-3 text-right font-medium">
+                    {st.balance > 0 ? (
+                      <span className="inline-block text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold text-xs">
+                        +{st.balance?.toLocaleString()} ֏
+                      </span>
+                    ) : (
+                      <span className="inline-block text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200 font-bold text-xs">
+                        {st.balance?.toLocaleString()} ֏
+                      </span>
+                    )}
+                  </td>
                 </tr>
               ))}
               {students.length === 0 && (
-                <tr><td colSpan="5" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
+                <tr><td colSpan="6" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>

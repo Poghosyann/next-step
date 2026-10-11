@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, User, CreditCard, Trash2, Edit2, X } from 'lucide-react';
+import { ArrowLeft, CreditCard, Trash2, Edit2, X } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -13,7 +13,7 @@ const StudentProfile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({});
 
-  const fetchStudent = async () => {
+  const fetchStudent = useCallback(async () => {
     try {
       const response = await api.get(`/students/${id}`);
       setStudent(response.data);
@@ -21,11 +21,11 @@ const StudentProfile = () => {
     } catch (error) {
       console.error('Error fetching student details:', error);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchStudent();
-  }, [id]);
+  }, [fetchStudent]);
 
   const handleDelete = async () => {
     if (window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս ուսանողին: Այս գործողությունը անդառնալի է։')) {
@@ -102,6 +102,43 @@ const StudentProfile = () => {
                 {student.monthly_fee?.toLocaleString()} ֏
                 {student.discount_percent > 0 && <span className="text-brand ml-2 bg-brand/10 px-2 py-0.5 rounded text-sm">-{student.discount_percent}%</span>}
               </p>
+            </div>
+
+            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2 mt-4">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Հաշվեկշիռ և Բալանս</p>
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Վճարված է:</span>
+                <span className="font-bold text-gray-800">{(student.total_paid || 0).toLocaleString()} ֏</span>
+              </div>
+              
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">1 դասի արժեք:</span>
+                <span className="font-medium text-gray-700">{(student.lesson_cost || 0).toLocaleString()} ֏</span>
+              </div>
+
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Արված դասեր:</span>
+                <span className="font-semibold text-gray-700">{student.total_lessons_attended || 0} դաս</span>
+              </div>
+
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-gray-500">Գանձված է:</span>
+                <span className="font-medium text-gray-700">{(student.total_charged || 0).toLocaleString()} ֏</span>
+              </div>
+
+              <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                <span className="text-sm font-bold text-gray-700">Ընթացիկ Բալանս:</span>
+                {student.balance > 0 ? (
+                  <span className="text-emerald-700 bg-emerald-100/60 px-2.5 py-1 rounded-md font-extrabold text-sm border border-emerald-200">
+                    +{student.balance?.toLocaleString()} ֏
+                  </span>
+                ) : (
+                  <span className="text-red-600 bg-red-100/60 px-2.5 py-1 rounded-md font-extrabold text-sm border border-red-200">
+                    {student.balance?.toLocaleString()} ֏
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>

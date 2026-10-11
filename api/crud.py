@@ -24,13 +24,54 @@ def update_admin_password(db: Session, username: str, new_password: str):
     return None
 
 # ============
-# Students
+# Students & Balance
 # ============
+def calculate_student_balance(student):
+    total_paid = sum(p.amount for p in (student.payments or []))
+    
+    monthly_fee = student.monthly_fee or 0
+    if student.discount_percent and student.discount_percent > 0:
+        monthly_fee = int(monthly_fee * (1 - student.discount_percent / 100))
+    
+    lesson_cost = int(round(monthly_fee / 12.0)) if monthly_fee > 0 else 0
+    
+    total_lessons_attended = 0
+    group_names = []
+    for grp in (student.groups or []):
+        total_lessons_attended += (grp.conducted_lessons or 0)
+        if grp.name:
+            group_names.append(grp.name)
+    
+    total_charged = total_lessons_attended * lesson_cost
+    balance = total_paid - total_charged
+
+    return {
+        "total_paid": total_paid,
+        "total_charged": total_charged,
+        "total_lessons_attended": total_lessons_attended,
+        "lesson_cost": lesson_cost,
+        "balance": balance,
+        "group_names": group_names
+    }
+
+def enrich_student(student):
+    if not student:
+        return None
+    stats = calculate_student_balance(student)
+    student.total_paid = stats["total_paid"]
+    student.total_charged = stats["total_charged"]
+    student.total_lessons_attended = stats["total_lessons_attended"]
+    student.lesson_cost = stats["lesson_cost"]
+    student.balance = stats["balance"]
+    student.group_names = stats["group_names"]
+    return student
+
 def get_student_by_email(db: Session, email: str):
     return db.query(models.Student).filter(models.Student.email == email).first()
 
 def get_student(db: Session, student_id: int):
-    return db.query(models.Student).filter(models.Student.id == student_id).first()
+    st = db.query(models.Student).filter(models.Student.id == student_id).first()
+    return enrich_student(st)
 
 from sqlalchemy import or_
 
@@ -55,14 +96,45 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = Non
         
     total = query.count()
     items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
+    for st in items:
+        enrich_student(st)
     return {"total": total, "items": items}
+
+def get_debtors(db: Session, course_direction: str = None, search: str = None):
+    query = db.query(models.Student)
+    if course_direction and course_direction.strip():
+        query = query.filter(models.Student.course_direction.ilike(f"%{course_direction.strip()}%"))
+    if search and search.strip():
+        sf = f"%{search.strip()}%"
+        query = query.filter(
+            or_(
+                models.Student.full_name.ilike(sf),
+                models.Student.phone.ilike(sf),
+                models.Student.email.ilike(sf)
+            )
+        )
+    all_students = query.all()
+    debtors = []
+    total_debt_amount = 0
+    for st in all_students:
+        enrich_student(st)
+        if (st.balance or 0) < 0:
+            debtors.append(st)
+            total_debt_amount += abs(st.balance)
+    
+    debtors.sort(key=lambda s: s.balance)
+    return {
+        "total_debtors": len(debtors),
+        "total_debt_amount": total_debt_amount,
+        "items": debtors
+    }
 
 def create_student(db: Session, student: schemas.StudentCreate):
     db_student = models.Student(**student.dict())
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
-    return db_student
+    return enrich_student(db_student)
 
 def update_student(db: Session, student_id: int, student: schemas.StudentUpdate):
     db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
@@ -135,16 +207,7 @@ import datetime
 def calculate_instructor_monthly_stats(instructor, groups):
     today = datetime.date.today()
     first_of_month = datetime.date(today.year, today.month, 1)
-
-    day_patterns = [
-        (0, ['երկ']),
-        (1, ['երք', 'երեք']),
-        (2, ['չրք', 'չոր']),
-        (3, ['հնգ', 'հինգ']),
-        (4, ['ուրբ', 'ուբթ', 'ուր']),
-        (5, ['շբթ', 'շաբ']),
-        (6, ['կիր']),
-    ]
+    first_of_month_str = str(first_of_month)
 
     total_lessons = 0
     assigned_groups = []
@@ -154,7 +217,7 @@ def calculate_instructor_monthly_stats(instructor, groups):
             continue
         if grp.name:
             assigned_groups.append(grp.name)
-        if not grp.days or not grp.start_date:
+        if not grp.start_date:
             continue
         
         try:
@@ -166,28 +229,40 @@ def calculate_instructor_monthly_stats(instructor, groups):
         if parsed_start > today:
             continue
 
-        group_days_str = grp.days.lower()
-        active_weekdays = set()
-        for w_idx, patterns in day_patterns:
-            if any(p in group_days_str for p in patterns):
-                active_weekdays.add(w_idx)
-        
-        if not active_weekdays:
-            continue
-
-        course_total = grp.course.total_lessons if (grp.course and grp.course.total_lessons) else None
-
-        # Trace lessons from parsed_start to today
-        curr = parsed_start
-        lifetime_count = 0
-        while curr <= today:
-            if curr.weekday() in active_weekdays:
-                lifetime_count += 1
-                if course_total and lifetime_count > course_total:
-                    break
-                if curr >= first_of_month:
-                    total_lessons += 1
-            curr += datetime.timedelta(days=1)
+        # If group has explicit recorded lesson dates
+        monthly_lessons = [l for l in (grp.lessons or []) if l.lesson_date and l.lesson_date >= first_of_month_str]
+        if monthly_lessons:
+            total_lessons += len(monthly_lessons)
+        else:
+            # Fallback based on conducted_lessons
+            conducted = grp.conducted_lessons or 0
+            if conducted > 0:
+                if parsed_start >= first_of_month:
+                    total_lessons += conducted
+                else:
+                    day_patterns = [
+                        (0, ['երկ']),
+                        (1, ['երք', 'երեք']),
+                        (2, ['չրք', 'չոր']),
+                        (3, ['հնգ', 'հինգ']),
+                        (4, ['ուրբ', 'ուբթ', 'ուր']),
+                        (5, ['շբթ', 'շաբ']),
+                        (6, ['կիր']),
+                    ]
+                    group_days_str = (grp.days or "").lower()
+                    active_weekdays = set()
+                    for w_idx, patterns in day_patterns:
+                        if any(p in group_days_str for p in patterns):
+                            active_weekdays.add(w_idx)
+                    
+                    month_days = 0
+                    if active_weekdays:
+                        curr = first_of_month
+                        while curr <= today:
+                            if curr.weekday() in active_weekdays:
+                                month_days += 1
+                            curr += datetime.timedelta(days=1)
+                    total_lessons += min(conducted, month_days)
 
     rate = instructor.rate_per_lesson or 0
     return {
@@ -253,7 +328,7 @@ def calculate_group_progress(grp):
     if not grp.start_date:
         return {
             "is_started": False,
-            "completed_lessons": 0,
+            "completed_lessons": grp.conducted_lessons or 0,
             "remaining_lessons": total_course_lessons,
             "progress_percent": 0
         }
@@ -263,7 +338,7 @@ def calculate_group_progress(grp):
     except Exception:
         return {
             "is_started": False,
-            "completed_lessons": 0,
+            "completed_lessons": grp.conducted_lessons or 0,
             "remaining_lessons": total_course_lessons,
             "progress_percent": 0
         }
@@ -276,31 +351,7 @@ def calculate_group_progress(grp):
             "progress_percent": 0
         }
 
-    day_patterns = [
-        (0, ['երկ']),
-        (1, ['երք', 'երեք']),
-        (2, ['չրք', 'չոր']),
-        (3, ['հնգ', 'հինգ']),
-        (4, ['ուրբ', 'ուբթ', 'ուր']),
-        (5, ['շբթ', 'շաբ']),
-        (6, ['կիր']),
-    ]
-    group_days_str = (grp.days or "").lower()
-    active_weekdays = set()
-    for w_idx, patterns in day_patterns:
-        if any(p in group_days_str for p in patterns):
-            active_weekdays.add(w_idx)
-
-    completed = 0
-    if active_weekdays:
-        curr = parsed_start
-        while curr <= today:
-            if curr.weekday() in active_weekdays:
-                completed += 1
-                if total_course_lessons > 0 and completed >= total_course_lessons:
-                    break
-            curr += datetime.timedelta(days=1)
-
+    completed = grp.conducted_lessons or 0
     rem = max(0, total_course_lessons - completed) if total_course_lessons > 0 else 0
     pct = round((completed / total_course_lessons) * 100) if total_course_lessons > 0 else 0
     if pct > 100:
@@ -313,6 +364,59 @@ def calculate_group_progress(grp):
         "progress_percent": pct
     }
 
+def auto_check_daily_group_lessons(db: Session):
+    today = datetime.date.today()
+    today_str = str(today)
+
+    day_patterns = [
+        (0, ['երկ']),
+        (1, ['երք', 'երեք']),
+        (2, ['չրք', 'չոր']),
+        (3, ['հնգ', 'հինգ']),
+        (4, ['ուրբ', 'ուբթ', 'ուր']),
+        (5, ['շբթ', 'շաբ']),
+        (6, ['կիր']),
+    ]
+
+    try:
+        groups = db.query(models.Group).all()
+        changed = False
+
+        for grp in groups:
+            if not grp.start_date or not grp.days:
+                continue
+            try:
+                parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
+            except Exception:
+                continue
+
+            if parsed_start > today:
+                continue
+
+            group_days_str = (grp.days or "").lower()
+            is_today_scheduled = False
+            for w_idx, patterns in day_patterns:
+                if any(p in group_days_str for p in patterns):
+                    if today.weekday() == w_idx:
+                        is_today_scheduled = True
+                        break
+
+            if is_today_scheduled:
+                if grp.last_lesson_date != today_str:
+                    course_total = grp.course.total_lessons if (grp.course and grp.course.total_lessons) else 9999
+                    current = grp.conducted_lessons or 0
+                    if current < course_total:
+                        grp.conducted_lessons = current + 1
+                        grp.last_lesson_date = today_str
+                        gl = models.GroupLesson(group_id=grp.id, lesson_date=today_str)
+                        db.add(gl)
+                        changed = True
+
+        if changed:
+            db.commit()
+    except Exception as e:
+        print("Auto check lessons error:", e)
+
 def enrich_group(grp):
     if not grp:
         return None
@@ -324,6 +428,7 @@ def enrich_group(grp):
     return grp
 
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
+    auto_check_daily_group_lessons(db)
     groups = db.query(models.Group).offset(skip).limit(limit).all()
     for grp in groups:
         enrich_group(grp)
@@ -333,8 +438,40 @@ def get_group(db: Session, group_id: int):
     grp = db.query(models.Group).filter(models.Group.id == group_id).first()
     return enrich_group(grp)
 
+def conduct_group_lesson(db: Session, group_id: int):
+    grp = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not grp:
+        return None
+    today_str = str(datetime.date.today())
+    grp.conducted_lessons = (grp.conducted_lessons or 0) + 1
+    grp.last_lesson_date = today_str
+    gl = models.GroupLesson(group_id=grp.id, lesson_date=today_str)
+    db.add(gl)
+    db.commit()
+    db.refresh(grp)
+    return enrich_group(grp)
+
+def revert_group_lesson(db: Session, group_id: int):
+    grp = db.query(models.Group).filter(models.Group.id == group_id).first()
+    if not grp:
+        return None
+    current = grp.conducted_lessons or 0
+    if current > 0:
+        grp.conducted_lessons = current - 1
+        last_gl = db.query(models.GroupLesson).filter(models.GroupLesson.group_id == group_id).order_by(models.GroupLesson.id.desc()).first()
+        if last_gl:
+            db.delete(last_gl)
+        db.commit()
+        db.refresh(grp)
+    return enrich_group(grp)
+
 def create_group(db: Session, group: schemas.GroupCreate):
-    db_group = models.Group(**group.dict())
+    data = group.dict()
+    if data.get("conducted_lessons") is None:
+        data["conducted_lessons"] = 0
+    if not data.get("last_lesson_date"):
+        data["last_lesson_date"] = str(datetime.date.today())
+    db_group = models.Group(**data)
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
@@ -371,3 +508,4 @@ def add_students_to_group(db: Session, group_id: int, student_ids: list[int]):
     db.commit()
     db.refresh(group)
     return group
+

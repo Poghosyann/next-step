@@ -75,10 +75,23 @@ class Group(Base):
     end_time = Column(String)
     days = Column(String) # Comma separated like "Երկ., Չոր., Ուրբ."
     notes = Column(String)
+    conducted_lessons = Column(Integer, default=0)
+    last_lesson_date = Column(String, nullable=True)
 
     course = relationship("Course", back_populates="groups")
     instructor = relationship("Instructor", back_populates="groups")
     students = relationship("Student", secondary=group_student_table, back_populates="groups")
+    lessons = relationship("GroupLesson", back_populates="group", cascade="all, delete-orphan")
+
+class GroupLesson(Base):
+    __tablename__ = "group_lessons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id"))
+    lesson_date = Column(String, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    group = relationship("Group", back_populates="lessons")
 
 class Payment(Base):
     __tablename__ = "payments"
