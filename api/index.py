@@ -16,6 +16,15 @@ def init_db_if_needed():
     global _db_initialized
     if not _db_initialized:
         try:
+            # Ensure rate_per_lesson column exists
+            try:
+                import sqlalchemy
+                with engine.connect() as conn:
+                    conn.execute(sqlalchemy.text("ALTER TABLE instructors ADD COLUMN IF NOT EXISTS rate_per_lesson INTEGER DEFAULT 0;"))
+                    conn.commit()
+            except Exception as me:
+                print("Column add error:", me)
+
             models.Base.metadata.create_all(bind=engine)
             try:
                 seed.seed()

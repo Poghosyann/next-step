@@ -34,6 +34,7 @@ class Instructor(Base):
     last_name = Column(String)
     phone = Column(String)
     specialization = Column(String)
+    rate_per_lesson = Column(Integer, default=0)
 
     groups = relationship("Group", back_populates="instructor")
 

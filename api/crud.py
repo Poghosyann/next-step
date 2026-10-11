@@ -130,8 +130,82 @@ def delete_course(db: Session, course_id: int):
 # ============
 # Instructors
 # ============
+import datetime
+
+def calculate_instructor_monthly_stats(instructor, groups):
+    today = datetime.date.today()
+    first_of_month = datetime.date(today.year, today.month, 1)
+
+    day_patterns = [
+        (0, ['երկ']),
+        (1, ['երք', 'երեք']),
+        (2, ['չրք', 'չոր']),
+        (3, ['հնգ', 'հինգ']),
+        (4, ['ուրբ', 'ուբթ', 'ուր']),
+        (5, ['շբթ', 'շաբ']),
+        (6, ['կիր']),
+    ]
+
+    total_lessons = 0
+    assigned_groups = []
+
+    for grp in groups:
+        if grp.instructor_id != instructor.id:
+            continue
+        if grp.name:
+            assigned_groups.append(grp.name)
+        if not grp.days:
+            continue
+        
+        group_days_str = grp.days.lower()
+        active_weekdays = set()
+        for w_idx, patterns in day_patterns:
+            if any(p in group_days_str for p in patterns):
+                active_weekdays.add(w_idx)
+        
+        if not active_weekdays:
+            continue
+
+        start_date = first_of_month
+        if grp.start_date:
+            try:
+                parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
+                if parsed_start > start_date:
+                    start_date = parsed_start
+            except Exception:
+                pass
+
+        if start_date > today:
+            continue
+
+        curr = start_date
+        while curr <= today:
+            if curr.weekday() in active_weekdays:
+                total_lessons += 1
+            curr += datetime.timedelta(days=1)
+
+    rate = instructor.rate_per_lesson or 0
+    return {
+        "current_month_lessons": total_lessons,
+        "current_month_salary": total_lessons * rate,
+        "assigned_groups": assigned_groups
+    }
+
+def enrich_instructor(instructor, groups):
+    if not instructor:
+        return None
+    stats = calculate_instructor_monthly_stats(instructor, groups)
+    instructor.current_month_lessons = stats["current_month_lessons"]
+    instructor.current_month_salary = stats["current_month_salary"]
+    instructor.assigned_groups = stats["assigned_groups"]
+    return instructor
+
 def get_instructors(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Instructor).offset(skip).limit(limit).all()
+    instructors = db.query(models.Instructor).offset(skip).limit(limit).all()
+    groups = db.query(models.Group).all()
+    for inst in instructors:
+        enrich_instructor(inst, groups)
+    return instructors
 
 def create_instructor(db: Session, instructor: schemas.InstructorCreate):
     db_instructor = models.Instructor(**instructor.dict())
@@ -141,7 +215,11 @@ def create_instructor(db: Session, instructor: schemas.InstructorCreate):
     return db_instructor
 
 def get_instructor(db: Session, instructor_id: int):
-    return db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+    inst = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
+    if inst:
+        groups = db.query(models.Group).filter(models.Group.instructor_id == instructor_id).all()
+        enrich_instructor(inst, groups)
+    return inst
 
 def update_instructor(db: Session, instructor_id: int, instructor: schemas.InstructorUpdate):
     db_instructor = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()

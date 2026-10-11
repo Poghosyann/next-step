@@ -33,6 +33,7 @@ class InstructorBase(BaseModel):
     last_name: str
     phone: str
     specialization: Optional[str] = None
+    rate_per_lesson: Optional[int] = 0
 
 class InstructorCreate(InstructorBase):
     pass
@@ -42,9 +43,13 @@ class InstructorUpdate(BaseModel):
     last_name: Optional[str] = None
     phone: Optional[str] = None
     specialization: Optional[str] = None
+    rate_per_lesson: Optional[int] = None
 
 class Instructor(InstructorBase):
     id: int
+    current_month_lessons: Optional[int] = 0
+    current_month_salary: Optional[int] = 0
+    assigned_groups: Optional[List[str]] = []
     class Config:
         orm_mode = True
 
