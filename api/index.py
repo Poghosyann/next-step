@@ -25,8 +25,10 @@ def init_db_if_needed():
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS conducted_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_lesson_date VARCHAR;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS course_format VARCHAR DEFAULT 'Օֆլայն';",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS custom_lessons_attended INTEGER;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS initial_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;",
+                    "ALTER TABLE group_lessons ADD COLUMN IF NOT EXISTS instructor_id INTEGER;",
                 ]
                 for col_sql in ddl_statements:
                     try:
@@ -177,9 +179,27 @@ def update_student_group_offset_endpoint(
     payload: schemas.StudentGroupOffsetUpdate,
     db: Session = Depends(get_db)
 ):
-    updated = crud.update_student_group_offset(db, student_id, group_id, payload.initial_lessons)
+    updated = crud.update_student_group_offset(
+        db,
+        student_id,
+        group_id,
+        initial_lessons=payload.initial_lessons,
+        attended_lessons=payload.attended_lessons
+    )
     if not updated:
         raise HTTPException(status_code=404, detail="Student-group link not found")
+    return updated
+
+@app.put("/api/students/{student_id}/lessons", response_model=schemas.Student)
+def update_student_lessons_endpoint(
+    student_id: int,
+    payload: schemas.StudentGroupOffsetUpdate,
+    db: Session = Depends(get_db)
+):
+    target = payload.attended_lessons if payload.attended_lessons is not None else (payload.initial_lessons or 0)
+    updated = crud.update_student_total_lessons(db, student_id, target)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Student not found")
     return updated
 
 @app.get("/api/payments", response_model=list[schemas.Payment])

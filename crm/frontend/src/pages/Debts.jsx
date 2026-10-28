@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { AlertCircle, Search, DollarSign, Users, Eye, CheckCircle, X, CreditCard, RefreshCw } from 'lucide-react';
+import { AlertCircle, Search, DollarSign, Users, Eye, CheckCircle, X, CreditCard, RefreshCw, Edit2, Check } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Debts = () => {
@@ -16,6 +16,8 @@ const Debts = () => {
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
   const [coursesList, setCoursesList] = useState([]);
+  const [editingStudentId, setEditingStudentId] = useState(null);
+  const [editingLessonsVal, setEditingLessonsVal] = useState(0);
 
   const defaultDirections = [
     'Ֆինանսական հաշվառում',
@@ -73,6 +75,20 @@ const Debts = () => {
     setPaymentAmount(suggestedAmount);
     setPaymentMethod('Կանխիկ');
     setPaymentNotes(`Պարտքի մարում (${student.full_name})`);
+  };
+
+  const handleSaveStudentLessons = async (studentId) => {
+    try {
+      await api.put(`/students/${studentId}/lessons`, {
+        attended_lessons: parseInt(editingLessonsVal, 10) || 0
+      });
+      setEditingStudentId(null);
+      fetchDebts();
+      addToast('Ուսանողի դասերի քանակը և բալանսը թարմացվեցին', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասերի քանակը թարմացնելիս', 'error');
+    }
   };
 
   const handlePaymentSubmit = async (e) => {
@@ -215,9 +231,51 @@ const Debts = () => {
                     {(st.lesson_cost || 0).toLocaleString()} ֏
                   </td>
                   <td className="p-3.5 text-center whitespace-nowrap">
-                    <span className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold">
-                      {st.total_lessons_attended || 0} դաս
-                    </span>
+                    {editingStudentId === st.id ? (
+                      <div className="inline-flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          value={editingLessonsVal}
+                          onChange={(e) => setEditingLessonsVal(e.target.value)}
+                          className="w-16 px-2 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveStudentLessons(st.id)}
+                          className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                          title="Պահպանել"
+                        >
+                          <Check size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingStudentId(null)}
+                          className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                          title="Չեղարկել"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs font-semibold">
+                          {st.total_lessons_attended || 0} դաս
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingStudentId(st.id);
+                            setEditingLessonsVal(st.total_lessons_attended || 0);
+                          }}
+                          className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                          title="Խմբագրել ուսանողի դասերի քանակը"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      </div>
+                    )}
                   </td>
                   <td className="p-3.5 text-right font-medium text-gray-700 whitespace-nowrap">
                     {(st.total_paid || 0).toLocaleString()} ֏

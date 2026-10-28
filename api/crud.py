@@ -90,6 +90,11 @@ def calculate_student_balance(student, db: Session = None):
                 "student_attended_lessons": attended
             })
         
+        if len(groups) == 0:
+            custom_lessons = getattr(student, 'custom_lessons_attended', None)
+            if custom_lessons is not None:
+                total_lessons_attended = max(0, custom_lessons)
+        
         total_charged = total_lessons_attended * lesson_cost
         balance = total_paid - total_charged
 
@@ -140,6 +145,7 @@ def get_student(db: Session, student_id: int):
 from sqlalchemy import or_
 
 def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = None, status: str = None, course_direction: str = None):
+    auto_check_daily_group_lessons(db)
     query = db.query(models.Student)
     
     if search and search.strip():
@@ -168,6 +174,7 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = Non
     return {"total": total, "items": items}
 
 def get_debtors(db: Session, course_direction: str = None, search: str = None):
+    auto_check_daily_group_lessons(db)
     query = db.query(models.Student)
     if course_direction and course_direction.strip():
         query = query.filter(models.Student.course_direction.ilike(f"%{course_direction.strip()}%"))
@@ -275,87 +282,198 @@ def delete_course(db: Session, course_id: int):
 # ============
 import datetime
 
-def calculate_instructor_monthly_stats(instructor, groups):
+def ensure_group_instructor_history(db: Session, grp: models.Group):
+    try:
+        if not grp or not grp.instructor_id:
+            return
+        active_hist = db.query(models.GroupInstructorHistory).filter(
+            models.GroupInstructorHistory.group_id == grp.id,
+            models.GroupInstructorHistory.unassigned_date == None
+        ).first()
+        if not active_hist:
+            inst = grp.instructor
+            if not inst:
+                inst = db.query(models.Instructor).filter(models.Instructor.id == grp.instructor_id).first()
+            inst_name = f"{inst.first_name} {inst.last_name}".strip() if inst else f"Դասախոս #{grp.instructor_id}"
+            all_prev = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.group_id == grp.id
+            ).all()
+            start_les = max([h.end_lesson or 0 for h in all_prev], default=0)
+            conducted = grp.conducted_lessons or 0
+            active_hist = models.GroupInstructorHistory(
+                group_id=grp.id,
+                instructor_id=grp.instructor_id,
+                instructor_name=inst_name,
+                assigned_date=grp.start_date or str(datetime.date.today()),
+                unassigned_date=None,
+                start_lesson=start_les,
+                end_lesson=None,
+                lessons_taught=max(0, conducted - start_les)
+            )
+            db.add(active_hist)
+            db.commit()
+    except Exception as e:
+        print("ensure_group_instructor_history error:", e)
+
+def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
     today = datetime.date.today()
     first_of_month = datetime.date(today.year, today.month, 1)
     first_of_month_str = str(first_of_month)
 
-    total_lessons = 0
+    monthly_lessons = 0
+    total_lessons_taught = 0
     assigned_groups = []
 
+    group_map = {g.id: g for g in groups}
+
     for grp in groups:
-        if grp.instructor_id != instructor.id:
-            continue
-        if grp.name:
+        if grp.instructor_id == instructor.id and grp.name:
             assigned_groups.append(grp.name)
+
+    # Calculate total lessons taught across all groups (past & current) from GroupInstructorHistory
+    if db is not None:
+        try:
+            hist_records = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.instructor_id == instructor.id
+            ).all()
+            seen_active_groups = set()
+            for h in hist_records:
+                grp = group_map.get(h.group_id)
+                if h.unassigned_date is None and grp:
+                    seen_active_groups.add(grp.id)
+                    taught = max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
+                    total_lessons_taught += taught
+                else:
+                    total_lessons_taught += (h.lessons_taught or 0)
+
+            for grp in groups:
+                if grp.instructor_id == instructor.id and grp.id not in seen_active_groups:
+                    total_lessons_taught += (grp.conducted_lessons or 0)
+        except Exception as he:
+            print("hist calc error:", he)
+
+    # Calculate current month lessons (including lessons taught by this instructor before being reassigned this month)
+    if db is not None:
+        try:
+            explicit_month_lessons = db.query(models.GroupLesson).filter(
+                models.GroupLesson.instructor_id == instructor.id,
+                models.GroupLesson.lesson_date >= first_of_month_str
+            ).all()
+        except Exception:
+            explicit_month_lessons = []
+    else:
+        explicit_month_lessons = []
+
+    groups_with_explicit = set()
+    for gl in explicit_month_lessons:
+        grp = group_map.get(gl.group_id)
+        if grp and grp.start_date:
+            try:
+                parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
+                if parsed_start <= today:
+                    monthly_lessons += 1
+                    groups_with_explicit.add(grp.id)
+            except Exception:
+                pass
+
+    # For groups where instructor is currently assigned or was assigned this month without explicit instructor_id on GroupLesson
+    for grp in groups:
+        if grp.id in groups_with_explicit:
+            continue
         if not grp.start_date:
             continue
-        
         try:
             parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
         except Exception:
             continue
-
-        # Group is only active if start_date <= today
         if parsed_start > today:
             continue
 
-        # If group has explicit recorded lesson dates
-        monthly_lessons = [l for l in (grp.lessons or []) if l.lesson_date and l.lesson_date >= first_of_month_str]
-        if monthly_lessons:
-            total_lessons += len(monthly_lessons)
+        # Check if this instructor has an active history or a closed history in this month for grp
+        inst_taught_in_grp = 0
+        if db is not None:
+            h_list = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.group_id == grp.id,
+                models.GroupInstructorHistory.instructor_id == instructor.id
+            ).all()
+            if h_list:
+                for h in h_list:
+                    if h.unassigned_date is None:
+                        inst_taught_in_grp += max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
+                    elif h.unassigned_date >= first_of_month_str:
+                        inst_taught_in_grp += (h.lessons_taught or 0)
+            elif grp.instructor_id == instructor.id:
+                inst_taught_in_grp = grp.conducted_lessons or 0
+        elif grp.instructor_id == instructor.id:
+            inst_taught_in_grp = grp.conducted_lessons or 0
+
+        if inst_taught_in_grp <= 0:
+            continue
+
+        # Legacy GroupLesson rows without instructor_id
+        untagged_month_lessons = [
+            l for l in (grp.lessons or [])
+            if getattr(l, 'instructor_id', None) is None and l.lesson_date and l.lesson_date >= first_of_month_str
+        ]
+        if untagged_month_lessons and grp.instructor_id == instructor.id:
+            monthly_lessons += min(inst_taught_in_grp, len(untagged_month_lessons))
         else:
-            # Fallback based on conducted_lessons
-            conducted = grp.conducted_lessons or 0
-            if conducted > 0:
-                if parsed_start >= first_of_month:
-                    total_lessons += conducted
-                else:
-                    day_patterns = [
-                        (0, ['երկ']),
-                        (1, ['երք', 'երեք']),
-                        (2, ['չրք', 'չոր']),
-                        (3, ['հնգ', 'հինգ']),
-                        (4, ['ուրբ', 'ուբթ', 'ուր']),
-                        (5, ['շբթ', 'շաբ']),
-                        (6, ['կիր']),
-                    ]
-                    group_days_str = (grp.days or "").lower()
-                    active_weekdays = set()
-                    for w_idx, patterns in day_patterns:
-                        if any(p in group_days_str for p in patterns):
-                            active_weekdays.add(w_idx)
-                    
-                    month_days = 0
-                    if active_weekdays:
-                        curr = first_of_month
-                        while curr <= today:
-                            if curr.weekday() in active_weekdays:
-                                month_days += 1
-                            curr += datetime.timedelta(days=1)
-                    total_lessons += min(conducted, month_days)
+            if parsed_start >= first_of_month:
+                monthly_lessons += inst_taught_in_grp
+            else:
+                day_patterns = [
+                    (0, ['երկ']),
+                    (1, ['երք', 'երեք']),
+                    (2, ['չրք', 'չոր']),
+                    (3, ['հնգ', 'հինգ']),
+                    (4, ['ուրբ', 'ուբթ', 'ուր']),
+                    (5, ['շբթ', 'շաբ']),
+                    (6, ['կիր']),
+                ]
+                group_days_str = (grp.days or "").lower()
+                active_weekdays = set()
+                for w_idx, patterns in day_patterns:
+                    if any(p in group_days_str for p in patterns):
+                        active_weekdays.add(w_idx)
+                
+                month_days = 0
+                if active_weekdays:
+                    curr = first_of_month
+                    while curr <= today:
+                        if curr.weekday() in active_weekdays:
+                            month_days += 1
+                        curr += datetime.timedelta(days=1)
+                monthly_lessons += min(inst_taught_in_grp, month_days)
+
+    if total_lessons_taught < monthly_lessons:
+        total_lessons_taught = monthly_lessons
 
     rate = instructor.rate_per_lesson or 0
     return {
-        "current_month_lessons": total_lessons,
-        "current_month_salary": total_lessons * rate,
+        "current_month_lessons": monthly_lessons,
+        "current_month_salary": monthly_lessons * rate,
+        "total_lessons_taught": total_lessons_taught,
         "assigned_groups": assigned_groups
     }
 
-def enrich_instructor(instructor, groups):
+def enrich_instructor(instructor, groups, db: Session = None):
     if not instructor:
         return None
-    stats = calculate_instructor_monthly_stats(instructor, groups)
+    stats = calculate_instructor_monthly_stats(instructor, groups, db=db)
     instructor.current_month_lessons = stats["current_month_lessons"]
     instructor.current_month_salary = stats["current_month_salary"]
+    instructor.total_lessons_taught = stats["total_lessons_taught"]
     instructor.assigned_groups = stats["assigned_groups"]
     return instructor
 
 def get_instructors(db: Session, skip: int = 0, limit: int = 100):
+    auto_check_daily_group_lessons(db)
     instructors = db.query(models.Instructor).offset(skip).limit(limit).all()
     groups = db.query(models.Group).all()
+    for grp in groups:
+        ensure_group_instructor_history(db, grp)
     for inst in instructors:
-        enrich_instructor(inst, groups)
+        enrich_instructor(inst, groups, db=db)
     return instructors
 
 def create_instructor(db: Session, instructor: schemas.InstructorCreate):
@@ -368,8 +486,8 @@ def create_instructor(db: Session, instructor: schemas.InstructorCreate):
 def get_instructor(db: Session, instructor_id: int):
     inst = db.query(models.Instructor).filter(models.Instructor.id == instructor_id).first()
     if inst:
-        groups = db.query(models.Group).filter(models.Group.instructor_id == instructor_id).all()
-        enrich_instructor(inst, groups)
+        groups = db.query(models.Group).all()
+        enrich_instructor(inst, groups, db=db)
     return inst
 
 def update_instructor(db: Session, instructor_id: int, instructor: schemas.InstructorUpdate):
@@ -454,6 +572,7 @@ def auto_check_daily_group_lessons(db: Session):
         changed = False
 
         for grp in groups:
+            ensure_group_instructor_history(db, grp)
             if not grp.start_date or not grp.days:
                 continue
             try:
@@ -479,8 +598,18 @@ def auto_check_daily_group_lessons(db: Session):
                     if current < course_total:
                         grp.conducted_lessons = current + 1
                         grp.last_lesson_date = today_str
-                        gl = models.GroupLesson(group_id=grp.id, lesson_date=today_str)
+                        gl = models.GroupLesson(
+                            group_id=grp.id,
+                            instructor_id=grp.instructor_id,
+                            lesson_date=today_str
+                        )
                         db.add(gl)
+                        active_hist = db.query(models.GroupInstructorHistory).filter(
+                            models.GroupInstructorHistory.group_id == grp.id,
+                            models.GroupInstructorHistory.unassigned_date == None
+                        ).first()
+                        if active_hist:
+                            active_hist.lessons_taught = max(0, grp.conducted_lessons - (active_hist.start_lesson or 0))
                         changed = True
 
         if changed:
@@ -488,7 +617,7 @@ def auto_check_daily_group_lessons(db: Session):
     except Exception as e:
         print("Auto check lessons error:", e)
 
-def enrich_group(grp):
+def enrich_group(grp, db: Session = None):
     if not grp:
         return None
     progress = calculate_group_progress(grp)
@@ -496,45 +625,102 @@ def enrich_group(grp):
     grp.completed_lessons = progress["completed_lessons"]
     grp.remaining_lessons = progress["remaining_lessons"]
     grp.progress_percent = progress["progress_percent"]
+
+    for st in (getattr(grp, 'students', []) or []):
+        try:
+            enrich_student(st, db=db)
+        except Exception:
+            pass
+
+    history_items = []
+    try:
+        raw_hist = getattr(grp, 'instructor_history', []) or []
+        if db is not None and not raw_hist:
+            ensure_group_instructor_history(db, grp)
+            raw_hist = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.group_id == grp.id
+            ).order_by(models.GroupInstructorHistory.id.asc()).all()
+        else:
+            raw_hist = sorted(raw_hist, key=lambda x: x.id or 0)
+
+        for h in raw_hist:
+            is_curr = h.unassigned_date is None
+            taught = max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0)) if is_curr else (h.lessons_taught or 0)
+            history_items.append({
+                "id": h.id,
+                "group_id": grp.id,
+                "instructor_id": h.instructor_id,
+                "instructor_name": h.instructor_name or "",
+                "assigned_date": h.assigned_date,
+                "unassigned_date": h.unassigned_date,
+                "start_lesson": h.start_lesson or 0,
+                "end_lesson": h.end_lesson,
+                "lessons_taught": taught,
+                "is_current": is_curr
+            })
+    except Exception as he:
+        print("enrich_group history error:", he)
+
+    grp.instructor_history_list = history_items
     return grp
 
 def get_groups(db: Session, skip: int = 0, limit: int = 100):
     auto_check_daily_group_lessons(db)
     groups = db.query(models.Group).offset(skip).limit(limit).all()
     for grp in groups:
-        enrich_group(grp)
+        enrich_group(grp, db=db)
     return groups
 
 def get_group(db: Session, group_id: int):
     grp = db.query(models.Group).filter(models.Group.id == group_id).first()
-    return enrich_group(grp)
+    return enrich_group(grp, db=db)
 
 def conduct_group_lesson(db: Session, group_id: int):
     grp = db.query(models.Group).filter(models.Group.id == group_id).first()
     if not grp:
         return None
+    ensure_group_instructor_history(db, grp)
     today_str = str(datetime.date.today())
     grp.conducted_lessons = (grp.conducted_lessons or 0) + 1
     grp.last_lesson_date = today_str
-    gl = models.GroupLesson(group_id=grp.id, lesson_date=today_str)
+    gl = models.GroupLesson(
+        group_id=grp.id,
+        instructor_id=grp.instructor_id,
+        lesson_date=today_str
+    )
     db.add(gl)
+    active_hist = db.query(models.GroupInstructorHistory).filter(
+        models.GroupInstructorHistory.group_id == grp.id,
+        models.GroupInstructorHistory.unassigned_date == None
+    ).first()
+    if active_hist:
+        active_hist.lessons_taught = max(0, grp.conducted_lessons - (active_hist.start_lesson or 0))
     db.commit()
     db.refresh(grp)
-    return enrich_group(grp)
+    return enrich_group(grp, db=db)
 
 def revert_group_lesson(db: Session, group_id: int):
     grp = db.query(models.Group).filter(models.Group.id == group_id).first()
     if not grp:
         return None
+    ensure_group_instructor_history(db, grp)
     current = grp.conducted_lessons or 0
     if current > 0:
         grp.conducted_lessons = current - 1
         last_gl = db.query(models.GroupLesson).filter(models.GroupLesson.group_id == group_id).order_by(models.GroupLesson.id.desc()).first()
         if last_gl:
             db.delete(last_gl)
+        active_hist = db.query(models.GroupInstructorHistory).filter(
+            models.GroupInstructorHistory.group_id == grp.id,
+            models.GroupInstructorHistory.unassigned_date == None
+        ).first()
+        if active_hist:
+            if grp.conducted_lessons < (active_hist.start_lesson or 0):
+                active_hist.start_lesson = grp.conducted_lessons
+            active_hist.lessons_taught = max(0, grp.conducted_lessons - (active_hist.start_lesson or 0))
         db.commit()
         db.refresh(grp)
-    return enrich_group(grp)
+    return enrich_group(grp, db=db)
 
 def create_group(db: Session, group: schemas.GroupCreate):
     data = group.dict()
@@ -546,17 +732,66 @@ def create_group(db: Session, group: schemas.GroupCreate):
     db.add(db_group)
     db.commit()
     db.refresh(db_group)
-    return enrich_group(db_group)
+    ensure_group_instructor_history(db, db_group)
+    return enrich_group(db_group, db=db)
 
 def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
     db_group = db.query(models.Group).filter(models.Group.id == group_id).first()
     if db_group:
+        ensure_group_instructor_history(db, db_group)
+        old_instructor_id = db_group.instructor_id
         update_data = group.dict(exclude_unset=True)
+        new_instructor_id = update_data.get("instructor_id", old_instructor_id)
+        
         for key, value in update_data.items():
             setattr(db_group, key, value)
         db.commit()
         db.refresh(db_group)
-        enrich_group(db_group)
+
+        today_str = str(datetime.date.today())
+        conducted = db_group.conducted_lessons or 0
+
+        if new_instructor_id != old_instructor_id:
+            # Close previous instructor's active history record, preserving their lessons taught
+            active_hist = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.group_id == db_group.id,
+                models.GroupInstructorHistory.unassigned_date == None
+            ).first()
+            if active_hist:
+                active_hist.unassigned_date = today_str
+                active_hist.end_lesson = conducted
+                active_hist.lessons_taught = max(0, conducted - (active_hist.start_lesson or 0))
+            
+            # Open new history record for the new instructor starting at current conducted_lessons
+            if new_instructor_id:
+                new_inst = db.query(models.Instructor).filter(models.Instructor.id == new_instructor_id).first()
+                inst_name = f"{new_inst.first_name} {new_inst.last_name}".strip() if new_inst else f"Դասախոս #{new_instructor_id}"
+                new_hist = models.GroupInstructorHistory(
+                    group_id=db_group.id,
+                    instructor_id=new_instructor_id,
+                    instructor_name=inst_name,
+                    assigned_date=today_str,
+                    unassigned_date=None,
+                    start_lesson=conducted,
+                    end_lesson=None,
+                    lessons_taught=0
+                )
+                db.add(new_hist)
+            db.commit()
+            db.refresh(db_group)
+        else:
+            # Update current instructor's lessons_taught if conducted_lessons was edited
+            active_hist = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.group_id == db_group.id,
+                models.GroupInstructorHistory.unassigned_date == None
+            ).first()
+            if active_hist:
+                if conducted < (active_hist.start_lesson or 0):
+                    active_hist.start_lesson = conducted
+                active_hist.lessons_taught = max(0, conducted - (active_hist.start_lesson or 0))
+                db.commit()
+
+        enrich_group(db_group, db=db)
     return db_group
 
 def delete_group(db: Session, group_id: int):
@@ -595,17 +830,62 @@ def add_students_to_group(db: Session, group_id: int, student_ids: list[int]):
     
     db.commit()
     db.refresh(group)
-    return enrich_group(group)
+    return enrich_group(group, db=db)
 
-def update_student_group_offset(db: Session, student_id: int, group_id: int, initial_lessons: int):
+def update_student_group_offset(
+    db: Session,
+    student_id: int,
+    group_id: int,
+    initial_lessons: int = None,
+    attended_lessons: int = None
+):
     lnk = db.query(models.StudentGroupLink).filter(
         models.StudentGroupLink.student_id == student_id,
         models.StudentGroupLink.group_id == group_id
     ).first()
     if not lnk:
         return None
-    lnk.initial_lessons = max(0, initial_lessons)
+    grp = db.query(models.Group).filter(models.Group.id == group_id).first()
+    grp_conducted = (grp.conducted_lessons or 0) if grp else 0
+
+    if attended_lessons is not None:
+        # User specified directly how many lessons this student attended in this group
+        lnk.initial_lessons = grp_conducted - max(0, attended_lessons)
+    elif initial_lessons is not None:
+        lnk.initial_lessons = max(0, initial_lessons)
+
     db.commit()
+    return get_student(db, student_id)
+
+def update_student_total_lessons(db: Session, student_id: int, total_lessons: int):
+    st = db.query(models.Student).filter(models.Student.id == student_id).first()
+    if not st:
+        return None
+    target_lessons = max(0, total_lessons)
+    groups = getattr(st, 'groups', []) or []
+    if len(groups) == 0:
+        st.custom_lessons_attended = target_lessons
+        db.commit()
+    else:
+        # Adjust the first group's initial_lessons so total attended across groups equals target_lessons
+        links = db.query(models.StudentGroupLink).filter(
+            models.StudentGroupLink.student_id == student_id
+        ).all()
+        links_map = {l.group_id: l for l in links}
+        other_groups_attended = 0
+        first_grp = groups[0]
+        for grp in groups[1:]:
+            grp_cond = grp.conducted_lessons or 0
+            lnk = links_map.get(grp.id)
+            init_l = (lnk.initial_lessons or 0) if lnk else 0
+            other_groups_attended += max(0, grp_cond - init_l)
+        
+        needed_in_first = max(0, target_lessons - other_groups_attended)
+        first_cond = first_grp.conducted_lessons or 0
+        first_lnk = links_map.get(first_grp.id)
+        if first_lnk:
+            first_lnk.initial_lessons = first_cond - needed_in_first
+            db.commit()
     return get_student(db, student_id)
 
 def get_monthly_student_trend(db: Session, days_count: int = 30):

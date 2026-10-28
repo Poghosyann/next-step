@@ -261,8 +261,17 @@ const Instructors = () => {
                     </span>
                   </div>
 
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 flex items-center gap-1">
+                      <CalendarCheck size={13} className="text-gray-400" /> Ընդհանուր արված դասեր
+                    </span>
+                    <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Պահպանված է նաև նախկին խմբերում դասավանդած դասերի քանակը">
+                      {instructor.total_lessons_taught ?? instructor.current_month_lessons ?? 0} դաս
+                    </span>
+                  </div>
+
                   <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-700">Ընդհանուր եկամուտ</span>
+                    <span className="text-xs font-bold text-gray-700">Ընդհանուր եկամուտ (ամսական)</span>
                     <span className="text-base font-extrabold text-green-700">
                       {(instructor.current_month_salary || 0).toLocaleString()} ֏
                     </span>

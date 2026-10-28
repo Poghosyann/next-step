@@ -53,6 +53,7 @@ class Instructor(InstructorBase):
     id: int
     current_month_lessons: Optional[int] = 0
     current_month_salary: Optional[int] = 0
+    total_lessons_taught: Optional[int] = 0
     assigned_groups: Optional[List[str]] = []
     class Config:
         orm_mode = True
@@ -74,6 +75,7 @@ class StudentBase(BaseModel):
     source: Optional[str] = None
     comment: Optional[str] = None
     urgent_notes: Optional[str] = None
+    custom_lessons_attended: Optional[int] = None
 
 class StudentCreate(StudentBase):
     pass
@@ -92,6 +94,7 @@ class StudentUpdate(BaseModel):
     source: Optional[str] = None
     comment: Optional[str] = None
     urgent_notes: Optional[str] = None
+    custom_lessons_attended: Optional[int] = None
 
 class StudentGroupDetail(BaseModel):
     group_id: int
@@ -105,7 +108,8 @@ class StudentGroupDetail(BaseModel):
     student_attended_lessons: int = 0
 
 class StudentGroupOffsetUpdate(BaseModel):
-    initial_lessons: int
+    initial_lessons: Optional[int] = None
+    attended_lessons: Optional[int] = None
 
 class Student(StudentBase):
     id: int
@@ -146,6 +150,20 @@ class PaginatedResponse(BaseModel, Generic[T]):
 # =================
 # Group Schemas
 # =================
+class GroupInstructorHistoryItem(BaseModel):
+    id: Optional[int] = None
+    group_id: int
+    instructor_id: Optional[int] = None
+    instructor_name: str
+    assigned_date: Optional[str] = None
+    unassigned_date: Optional[str] = None
+    start_lesson: int = 0
+    end_lesson: Optional[int] = None
+    lessons_taught: int = 0
+    is_current: bool = False
+    class Config:
+        orm_mode = True
+
 class GroupBase(BaseModel):
     name: str
     course_id: int
@@ -182,6 +200,7 @@ class Group(GroupBase):
     remaining_lessons: Optional[int] = 0
     progress_percent: Optional[int] = 0
     is_started: Optional[bool] = False
+    instructor_history_list: Optional[List[GroupInstructorHistoryItem]] = []
     class Config:
         orm_mode = True
 

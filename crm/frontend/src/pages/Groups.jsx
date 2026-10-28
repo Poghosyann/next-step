@@ -299,7 +299,30 @@ const Groups = () => {
                         )}
                       </div>
                     </td>
-                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : ''}</td>
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-medium text-gray-800">
+                          {gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : 'Նշված չէ'}
+                        </span>
+                        {gr.instructor_history_list && gr.instructor_history_list.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                            {gr.instructor_history_list.map((h, hIdx) => (
+                              <span
+                                key={h.id || hIdx}
+                                title={`${h.instructor_name} • Արված դասեր՝ ${h.lessons_taught} (${h.assigned_date || ''}${h.unassigned_date ? ` - ${h.unassigned_date}` : ' - ընթացիկ'})`}
+                                className={`text-[10px] px-1.5 py-0.2 rounded border cursor-help ${
+                                  h.is_current
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
+                                    : 'bg-gray-100 text-gray-500 border-gray-200'
+                                }`}
+                              >
+                                {h.is_current ? `Ընթացիկ՝ ${h.lessons_taught} դաս` : `Նախկին՝ ${h.instructor_name} (${h.lessons_taught} դաս)`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-3.5 text-brand font-medium whitespace-nowrap">{gr.days}</td>
                     <td className="p-3.5 text-gray-600 whitespace-nowrap">{gr.start_time} - {gr.end_time}</td>
                     <td className="p-3.5 whitespace-nowrap">
@@ -400,14 +423,63 @@ const Groups = () => {
                 </div>
               </div>
               
-              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <label className="block text-sm font-bold text-gray-700 mb-3">Դասախոս *</label>
-                <select required name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
-                  <option value="">-- Ընտրեք Դասախոս --</option>
-                  {instructors.map(inst => (
-                    <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
-                  ))}
-                </select>
+              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Դասախոս *</label>
+                  <select required name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
+                    <option value="">-- Ընտրեք Դասախոս --</option>
+                    {instructors.map(inst => (
+                      <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
+                    ))}
+                  </select>
+                  {editingGroupId && (
+                    <p className="text-xs text-gray-400 mt-1.5">
+                      Դասախոսին փոխելիս նախկին դասախոսի արված դասերի քանակը պահպանվում է պատմության մեջ, իսկ նոր դասախոսի հաշվարկը սկսվում է 0-ից։
+                    </p>
+                  )}
+                </div>
+
+                {editingGroupId && (() => {
+                  const editingGrp = groups.find(g => g.id === editingGroupId);
+                  const histList = editingGrp?.instructor_history_list || [];
+                  if (histList.length === 0) return null;
+                  return (
+                    <div className="pt-3 border-t border-gray-100">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        Խմբի Դասախոսների Պատմություն
+                      </p>
+                      <div className="space-y-2">
+                        {histList.map((h, idx) => (
+                          <div
+                            key={h.id || idx}
+                            className={`flex items-center justify-between p-2.5 rounded-lg border text-xs ${
+                              h.is_current
+                                ? 'bg-emerald-50/60 border-emerald-200 text-gray-800'
+                                : 'bg-gray-50 border-gray-200 text-gray-600'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${h.is_current ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+                              <span className="font-bold">{h.instructor_name}</span>
+                              <span className="text-gray-400">
+                                ({h.assigned_date || 'սկզբից'}{h.unassigned_date ? ` → ${h.unassigned_date}` : ' → ընթացիկ'})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded font-bold ${
+                                h.is_current
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-gray-200 text-gray-700'
+                              }`}>
+                                Արված դասեր՝ {h.lessons_taught}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm" ref={studentDropdownRef}>

@@ -15,6 +15,8 @@ const StudentProfile = () => {
   const [formData, setFormData] = useState({});
   const [editingOffsetGroupId, setEditingOffsetGroupId] = useState(null);
   const [offsetValue, setOffsetValue] = useState(0);
+  const [editingTotalLessons, setEditingTotalLessons] = useState(false);
+  const [totalLessonsValue, setTotalLessonsValue] = useState(0);
 
   const defaultDirections = [
     'Ֆինանսական հաշվառում',
@@ -77,14 +79,28 @@ const StudentProfile = () => {
   const handleSaveGroupOffset = async (groupId) => {
     try {
       const res = await api.put(`/students/${id}/groups/${groupId}`, {
-        initial_lessons: parseInt(offsetValue, 10) || 0
+        attended_lessons: parseInt(offsetValue, 10) || 0
       });
       setStudent(res.data);
       setEditingOffsetGroupId(null);
-      addToast('Խմբի մեկնարկային դասերի հաշվարկը թարմացվեց', 'success');
+      addToast('Ուսանողի դասերի քանակը և բալանսը թարմացվեցին', 'success');
     } catch (err) {
       console.error(err);
       addToast('Սխալ դասերի հաշվարկը թարմացնելիս', 'error');
+    }
+  };
+
+  const handleSaveTotalLessons = async () => {
+    try {
+      const res = await api.put(`/students/${id}/lessons`, {
+        attended_lessons: parseInt(totalLessonsValue, 10) || 0
+      });
+      setStudent(res.data);
+      setEditingTotalLessons(false);
+      addToast('Ուսանողի դասերի քանակը և բալանսը թարմացվեցին', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասերի քանակը թարմացնելիս', 'error');
     }
   };
 
@@ -161,8 +177,50 @@ const StudentProfile = () => {
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-500">Մասնակցած դասեր:</span>
-                  <span className="font-semibold text-gray-700">{student.total_lessons_attended || 0} դաս</span>
+                  <span className="text-gray-500">Արված դասեր:</span>
+                  {editingTotalLessons ? (
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="0"
+                        value={totalLessonsValue}
+                        onChange={(e) => setTotalLessonsValue(e.target.value)}
+                        className="w-16 px-2 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                        autoFocus
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveTotalLessons}
+                        className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                        title="Պահպանել"
+                      >
+                        <Check size={12} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingTotalLessons(false)}
+                        className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                        title="Չեղարկել"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-gray-700">{student.total_lessons_attended || 0} դաս</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingTotalLessons(true);
+                          setTotalLessonsValue(student.total_lessons_attended || 0);
+                        }}
+                        className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                        title="Խմբագրել ուսանողի դասերի քանակը"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center text-sm">
@@ -216,17 +274,17 @@ const StudentProfile = () => {
                     )}
 
                     <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-xs text-gray-600">
-                      <span>Խմբի արված դասեր՝ <b>{sg.group_conducted_lessons}</b></span>
+                      <span>Խմբի ընդհանուր դասեր՝ <b>{sg.group_conducted_lessons}</b></span>
                       {editingOffsetGroupId === sg.group_id ? (
                         <div className="flex items-center gap-1">
-                          <span className="text-[11px] text-gray-500">Բաց թողած մեկնարկին՝</span>
+                          <span className="text-[11px] text-gray-500">Ուսանողի դասեր՝</span>
                           <input
                             type="number"
                             min="0"
-                            max={sg.group_conducted_lessons}
                             value={offsetValue}
                             onChange={(e) => setOffsetValue(e.target.value)}
-                            className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded bg-white text-center font-bold"
+                            className="w-14 px-1.5 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                            autoFocus
                           />
                           <button
                             type="button"
@@ -250,12 +308,12 @@ const StudentProfile = () => {
                           type="button"
                           onClick={() => {
                             setEditingOffsetGroupId(sg.group_id);
-                            setOffsetValue(sg.initial_lessons || 0);
+                            setOffsetValue(sg.student_attended_lessons || 0);
                           }}
-                          className="text-[11px] text-gray-500 hover:text-black underline"
-                          title="Կարգավորել, եթե ուսանողը խմբին միացել է ուշ"
+                          className="text-[11px] text-brand font-semibold hover:text-black underline flex items-center gap-1"
+                          title="Խմբագրել ուսանողի արված դասերի քանակը այս խմբում"
                         >
-                          Միացել է {sg.initial_lessons > 0 ? `${sg.initial_lessons}-րդ դասից հետո` : 'սկզբից'} (փոխել)
+                          <Edit2 size={11} /> Խմբագրել դասերը ({sg.student_attended_lessons})
                         </button>
                       )}
                     </div>

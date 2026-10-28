@@ -75,6 +75,7 @@ class Student(Base):
     source = Column(String)
     comment = Column(String)
     urgent_notes = Column(String)
+    custom_lessons_attended = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     groups = relationship("Group", secondary=group_student_table, back_populates="students")
@@ -100,16 +101,33 @@ class Group(Base):
     instructor = relationship("Instructor", back_populates="groups")
     students = relationship("Student", secondary=group_student_table, back_populates="groups")
     lessons = relationship("GroupLesson", back_populates="group", cascade="all, delete-orphan")
+    instructor_history = relationship("GroupInstructorHistory", back_populates="group", cascade="all, delete-orphan")
 
 class GroupLesson(Base):
     __tablename__ = "group_lessons"
 
     id = Column(Integer, primary_key=True, index=True)
     group_id = Column(Integer, ForeignKey("groups.id"))
+    instructor_id = Column(Integer, ForeignKey("instructors.id"), nullable=True)
     lesson_date = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     group = relationship("Group", back_populates="lessons")
+
+class GroupInstructorHistory(Base):
+    __tablename__ = "group_instructor_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), index=True)
+    instructor_id = Column(Integer, ForeignKey("instructors.id"), nullable=True)
+    instructor_name = Column(String)
+    assigned_date = Column(String)
+    unassigned_date = Column(String, nullable=True)
+    start_lesson = Column(Integer, default=0)
+    end_lesson = Column(Integer, nullable=True)
+    lessons_taught = Column(Integer, default=0)
+
+    group = relationship("Group", back_populates="instructor_history")
 
 class Payment(Base):
     __tablename__ = "payments"

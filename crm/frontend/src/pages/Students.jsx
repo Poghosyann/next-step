@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Plus, X, Search, Filter, Download } from 'lucide-react';
+import { Plus, X, Search, Filter, Download, Edit2, Check } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -15,6 +15,8 @@ const Students = () => {
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDirection, setFilterDirection] = useState('');
   const [coursesList, setCoursesList] = useState([]);
+  const [editingStudentId, setEditingStudentId] = useState(null);
+  const [editingLessonsVal, setEditingLessonsVal] = useState(0);
   const limit = 50;
 
   const defaultDirections = [
@@ -89,13 +91,28 @@ const Students = () => {
     }
   };
 
+  const handleSaveStudentLessons = async (e, studentId) => {
+    e.stopPropagation();
+    try {
+      const res = await api.put(`/students/${studentId}/lessons`, {
+        attended_lessons: parseInt(editingLessonsVal, 10) || 0
+      });
+      setStudents(prev => prev.map(s => s.id === studentId ? res.data : s));
+      setEditingStudentId(null);
+      addToast('Ուսանողի դասերի քանակը և բալանսը թարմացվեցին', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասերի քանակը թարմացնելիս', 'error');
+    }
+  };
+
   const exportToCSV = () => {
     if (students.length === 0) {
       addToast('Արտահանելու համար տվյալներ չկան', 'error');
       return;
     }
     
-    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Ամսավճար', 'Զեղչ (%)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
+    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Արված դասեր', 'Ամսավճար', 'Զեղչ (%)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
     const rows = students.map(st => [
       st.id,
       `"${(st.full_name || '').replace(/"/g, '""')}"`,
@@ -104,6 +121,7 @@ const Students = () => {
       `"${(st.phone || '').replace(/"/g, '""')}"`,
       `"${(st.email || '').replace(/"/g, '""')}"`,
       `"${(st.status || '').replace(/"/g, '""')}"`,
+      st.total_lessons_attended || 0,
       st.monthly_fee || 0,
       st.discount_percent || 0,
       st.balance || 0,
@@ -212,6 +230,7 @@ const Students = () => {
                 <th className="p-3.5 whitespace-nowrap">Հեռախոս</th>
                 <th className="p-3.5 whitespace-nowrap">Էլ. հասցե</th>
                 <th className="p-3.5 whitespace-nowrap">Կարգավիճակ</th>
+                <th className="p-3.5 text-center whitespace-nowrap">Արված դասեր</th>
                 <th className="p-3.5 text-right whitespace-nowrap">Բալանս</th>
               </tr>
             </thead>
@@ -240,6 +259,54 @@ const Students = () => {
                   <td className="p-3.5 whitespace-nowrap">
                     <StatusBadge status={st.status} />
                   </td>
+                  <td className="p-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    {editingStudentId === st.id ? (
+                      <div className="inline-flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          value={editingLessonsVal}
+                          onChange={(e) => setEditingLessonsVal(e.target.value)}
+                          className="w-16 px-2 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => handleSaveStudentLessons(e, st.id)}
+                          className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition"
+                          title="Պահպանել"
+                        >
+                          <Check size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setEditingStudentId(null); }}
+                          className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
+                          title="Չեղարկել"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center gap-1.5 group/les">
+                        <span className="inline-block bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded text-xs font-bold border border-gray-200">
+                          {st.total_lessons_attended || 0} դաս
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingStudentId(st.id);
+                            setEditingLessonsVal(st.total_lessons_attended || 0);
+                          }}
+                          className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                          title="Խմբագրել ուսանողի դասերի քանակը"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td className="p-3.5 text-right font-medium whitespace-nowrap">
                     {st.balance > 0 ? (
                       <span className="inline-block text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold text-xs">
@@ -254,7 +321,7 @@ const Students = () => {
                 </tr>
               ))}
               {students.length === 0 && (
-                <tr><td colSpan="7" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
+                <tr><td colSpan="8" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
