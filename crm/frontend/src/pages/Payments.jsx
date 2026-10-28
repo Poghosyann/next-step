@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { Plus, X, Search, User } from 'lucide-react';
+import { Plus, X, Search, User, Edit2, Trash2, Download, Filter, Calendar, Wallet } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Payments = () => {
@@ -8,6 +8,7 @@ const Payments = () => {
   const [payments, setPayments] = useState([]);
   const [students, setStudents] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [formData, setFormData] = useState({
     student_id: '',
     amount: '',
@@ -15,6 +16,12 @@ const Payments = () => {
     notes: ''
   });
 
+  // Table Filters
+  const [tableSearch, setTableSearch] = useState('');
+  const [filterMethod, setFilterMethod] = useState('');
+  const [filterMonth, setFilterMonth] = useState('');
+
+  // Modal Student Dropdown
   const [studentSearch, setStudentSearch] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -47,7 +54,7 @@ const Payments = () => {
         api.get('/payments'),
         api.get('/students?limit=1000')
       ]);
-      setPayments(pRes.data);
+      setPayments(pRes.data || []);
       setStudents(sRes.data.items || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -57,6 +64,43 @@ const Payments = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  const openCreateModal = () => {
+    setEditingPaymentId(null);
+    setFormData({
+      student_id: '',
+      amount: '',
+      method: 'Կանխիկ',
+      notes: ''
+    });
+    setStudentSearch('');
+    setShowModal(true);
+  };
+
+  const openEditModal = (pay) => {
+    setEditingPaymentId(pay.id);
+    setFormData({
+      student_id: pay.student_id,
+      amount: pay.amount,
+      method: pay.method || 'Կանխիկ',
+      notes: pay.notes || ''
+    });
+    setStudentSearch('');
+    setShowModal(true);
+  };
+
+  const handleDelete = async (paymentId) => {
+    if (window.confirm('Համոզվա՞ծ եք, որ ցանկանում եք ջնջել այս վճարումը։ Ուսանողի բալանսը ավտոմատ կվերահաշվարկվի։')) {
+      try {
+        await api.delete(`/payments/${paymentId}`);
+        fetchData();
+        addToast('Վճարումը հաջողությամբ ջնջվեց', 'success');
+      } catch (err) {
+        console.error('Error deleting payment:', err);
+        addToast('Սխալ վճարումը ջնջելիս', 'error');
+      }
+    }
+  };
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -69,12 +113,20 @@ const Payments = () => {
       return;
     }
     try {
-      await api.post('/payments', {
+      const payload = {
         ...formData,
         student_id: parseInt(formData.student_id),
-        amount: parseInt(formData.amount)
-      });
+        amount: parseInt(formData.amount) || 0
+      };
+      if (editingPaymentId) {
+        await api.put(`/payments/${editingPaymentId}`, payload);
+        addToast('Վճարումը հաջողությամբ թարմացվեց', 'success');
+      } else {
+        await api.post('/payments', payload);
+        addToast('Վճարումը հաջողությամբ գրանցվեց', 'success');
+      }
       setShowModal(false);
+      setEditingPaymentId(null);
       setFormData({
         student_id: '',
         amount: '',
@@ -83,23 +135,164 @@ const Payments = () => {
       });
       setStudentSearch('');
       fetchData();
-      addToast('Վճարումը հաջողությամբ գրանցվեց', 'success');
     } catch (error) {
-      console.error('Error adding payment:', error);
-      addToast('Սխալ վճարումը ավելացնելիս', 'error');
+      console.error('Error saving payment:', error);
+      addToast('Սխալ վճարումը պահպանելիս', 'error');
     }
+  };
+
+  const filteredPayments = payments.filter((pay) => {
+    const st = students.find(s => s.id === pay.student_id);
+    const stName = st ? st.full_name.toLowerCase() : '';
+    const stPhone = st && st.phone ? st.phone.toLowerCase() : '';
+    const notesStr = (pay.notes || '').toLowerCase();
+
+    if (tableSearch.trim()) {
+      const q = tableSearch.toLowerCase().trim();
+      const matchesSearch =
+        stName.includes(q) ||
+        stPhone.includes(q) ||
+        notesStr.includes(q) ||
+        String(pay.id).includes(q);
+      if (!matchesSearch) return false;
+    }
+
+    if (filterMethod && pay.method !== filterMethod) {
+      return false;
+    }
+
+    if (filterMonth && pay.payment_date) {
+      const payYearMonth = String(pay.payment_date).slice(0, 7);
+      if (payYearMonth !== filterMonth) return false;
+    }
+
+    return true;
+  });
+
+  const totalFilteredAmount = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+
+  const exportToCSV = () => {
+    if (filteredPayments.length === 0) {
+      addToast('Արտահանելու համար վճարումներ չկան', 'error');
+      return;
+    }
+
+    const headers = ['ID', 'Ուսանող', 'Գումար (֏)', 'Վճարման Եղանակ', 'Ամսաթիվ', 'Նշումներ'];
+    const rows = filteredPayments.map(pay => {
+      const st = students.find(s => s.id === pay.student_id);
+      const stLabel = st ? st.full_name : `Student ID: ${pay.student_id}`;
+      return [
+        pay.id,
+        `"${(stLabel || '').replace(/"/g, '""')}"`,
+        pay.amount || 0,
+        `"${(pay.method || '').replace(/"/g, '""')}"`,
+        pay.payment_date ? new Date(pay.payment_date).toLocaleDateString('hy-AM') : '',
+        `"${(pay.notes || '').replace(/"/g, '""')}"`
+      ];
+    });
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `payments_${filterMonth || new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    addToast('Excel (CSV) ֆայլը հաջողությամբ ներբեռնվեց', 'success');
   };
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Վճարումներ</h1>
-          <p className="text-gray-500">Ուսանողների վճարումների պատմություն</p>
+          <p className="text-gray-500">Ուսանողների վճարումների պատմություն և ֆինանսական վերահսկում</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="glass-button flex items-center gap-2">
-          <Plus size={18} /> Ավելացնել Վճարում
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={exportToCSV}
+            className="px-4 py-2.5 border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-sm"
+          >
+            <Download size={16} /> Արտահանել Excel
+          </button>
+          <button onClick={openCreateModal} className="glass-button flex items-center gap-2">
+            <Plus size={18} /> Ավելացնել Վճարում
+          </button>
+        </div>
+      </div>
+
+      {/* Filters & Total Summary Bar */}
+      <div className="glass-panel p-4 mb-6 flex flex-col lg:flex-row gap-4 items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto flex-1 items-center flex-wrap">
+          <div className="relative flex-1 w-full min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Որոնել ըստ ուսանողի անվան, հեռախոսի կամ նշումի..."
+              value={tableSearch}
+              onChange={(e) => setTableSearch(e.target.value)}
+              className="glass-input w-full pl-9 py-2 text-sm"
+            />
+          </div>
+
+          <div className="relative w-full sm:w-auto">
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <select
+              value={filterMethod}
+              onChange={(e) => setFilterMethod(e.target.value)}
+              className="glass-input pl-9 py-2 text-sm appearance-none w-full sm:w-48"
+            >
+              <option value="">Բոլոր եղանակները</option>
+              <option value="Կանխիկ">Կանխիկ</option>
+              <option value="Բանկային Փոխանցում">Բանկային Փոխանցում</option>
+              <option value="Առցանց Փոխանցում">Առցանց Փոխանցում</option>
+              <option value="Idram / Telcell">Idram / Telcell</option>
+            </select>
+          </div>
+
+          <div className="relative w-full sm:w-auto flex items-center gap-2">
+            <div className="relative w-full sm:w-auto">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              <input
+                type="month"
+                value={filterMonth}
+                onChange={(e) => setFilterMonth(e.target.value)}
+                className="glass-input pl-9 py-2 text-sm w-full sm:w-44"
+                title="Ֆիլտրել ըստ ամսվա"
+              />
+            </div>
+            {(tableSearch || filterMethod || filterMonth) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTableSearch('');
+                  setFilterMethod('');
+                  setFilterMonth('');
+                }}
+                className="text-xs font-semibold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition whitespace-nowrap"
+              >
+                Մաքրել
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-gray-100">
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl">
+            <Wallet size={18} className="text-emerald-600" />
+            <div>
+              <span className="text-[11px] text-emerald-700 block font-medium">
+                Ընդհանուր ({filteredPayments.length} վճարում)
+              </span>
+              <span className="text-base font-extrabold text-emerald-700">
+                {totalFilteredAmount.toLocaleString()} ֏
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="glass-panel overflow-hidden">
@@ -113,10 +306,11 @@ const Payments = () => {
                 <th className="p-3.5 whitespace-nowrap">Եղանակ</th>
                 <th className="p-3.5 whitespace-nowrap">Ամսաթիվ</th>
                 <th className="p-3.5 whitespace-nowrap">Նշումներ</th>
+                <th className="p-3.5 text-right whitespace-nowrap">Գործողություն</th>
               </tr>
             </thead>
             <tbody>
-              {payments.map((pay) => {
+              {filteredPayments.map((pay) => {
                 const st = students.find(s => s.id === pay.student_id);
                 return (
                   <tr key={pay.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
@@ -128,11 +322,31 @@ const Payments = () => {
                     </td>
                     <td className="p-3.5 text-gray-600 whitespace-nowrap">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
                     <td className="p-3.5 text-gray-500 text-sm whitespace-nowrap">{pay.notes || '-'}</td>
+                    <td className="p-3.5 text-right whitespace-nowrap">
+                      <div className="inline-flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(pay)}
+                          className="p-1.5 text-gray-500 hover:text-brand hover:bg-brand/10 rounded-lg transition"
+                          title="Խմբագրել վճարումը"
+                        >
+                          <Edit2 size={15} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(pay.id)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Ջնջել վճարումը"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
-              {payments.length === 0 && (
-                <tr><td colSpan="6" className="p-12 text-center text-gray-400">Վճարումներ չեն գտնվել</td></tr>
+              {filteredPayments.length === 0 && (
+                <tr><td colSpan="7" className="p-12 text-center text-gray-400">Վճարումներ չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
@@ -143,7 +357,9 @@ const Payments = () => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-800">Նոր Վճարում</h2>
+              <h2 className="text-xl font-bold text-gray-800">
+                {editingPaymentId ? 'Խմբագրել Վճարումը' : 'Նոր Վճարում'}
+              </h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-black">
                 <X size={24} />
               </button>
@@ -268,7 +484,7 @@ const Payments = () => {
                   Չեղարկել
                 </button>
                 <button type="submit" className="glass-button px-8">
-                  Պահպանել
+                  {editingPaymentId ? 'Թարմացնել' : 'Պահպանել'}
                 </button>
               </div>
             </form>

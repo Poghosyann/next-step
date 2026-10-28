@@ -155,9 +155,18 @@ class PaymentBase(BaseModel):
 class PaymentCreate(PaymentBase):
     pass
 
+class PaymentUpdate(BaseModel):
+    student_id: Optional[int] = None
+    amount: Optional[int] = None
+    method: Optional[str] = None
+    notes: Optional[str] = None
+
 class Payment(PaymentBase):
     id: int
     payment_date: Optional[datetime] = None
+    status: Optional[str] = "Ակտիվ"
+    is_deleted: Optional[int] = 0
+    deleted_at: Optional[datetime] = None
     class Config:
         orm_mode = True
 

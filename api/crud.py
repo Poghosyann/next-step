@@ -97,12 +97,19 @@ def record_daily_student_snapshot(db: Session):
 
 def calculate_student_balance(student, db: Session = None):
     try:
-        total_paid = sum((p.amount or 0) for p in (getattr(student, 'payments', []) or []))
+        active_payments = [
+            p for p in (getattr(student, 'payments', []) or [])
+            if not is_record_deleted(p)
+        ]
+        total_paid = sum((p.amount or 0) for p in active_payments)
         
         monthly_fee = getattr(student, 'monthly_fee', 0) or 0
         discount = getattr(student, 'discount_percent', 0) or 0
         if discount > 0:
             monthly_fee = int(round(monthly_fee * (1 - discount / 100.0)))
+        gift_card = getattr(student, 'gift_card', 0) or 0
+        if gift_card > 0:
+            monthly_fee = max(0, monthly_fee - gift_card)
         
         lesson_cost = int(round(monthly_fee / 12.0)) if monthly_fee > 0 else 0
         
@@ -133,7 +140,7 @@ def calculate_student_balance(student, db: Session = None):
             student_groups.append({
                 "group_id": grp.id,
                 "group_name": grp.name or "",
-                "course_title": grp.course.title if getattr(grp, 'course', None) else "",
+                "course_title": grp.course.title if (getattr(grp, 'course', None) and not is_record_deleted(grp.course)) else "",
                 "days": grp.days or "",
                 "start_time": grp.start_time or "",
                 "end_time": grp.end_time or "",
@@ -175,6 +182,10 @@ def enrich_student(student, db: Session = None):
     if not student:
         return None
     try:
+        student.payments = [
+            p for p in (getattr(student, 'payments', []) or [])
+            if not is_record_deleted(p)
+        ]
         stats = calculate_student_balance(student, db=db)
         student.total_paid = stats["total_paid"]
         student.total_charged = stats["total_charged"]
@@ -204,7 +215,15 @@ def get_student(db: Session, student_id: int):
     ).first()
     return enrich_student(st, db=db)
 
-def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = None, status: str = None, course_direction: str = None):
+def get_students(
+    db: Session,
+    skip: int = 0,
+    limit: int = 100,
+    search: str = None,
+    status: str = None,
+    course_direction: str = None,
+    group_id: str = None
+):
     auto_check_daily_group_lessons(db)
     query = db.query(models.Student).filter(
         or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
@@ -227,6 +246,19 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = Non
     if course_direction and course_direction.strip() and course_direction.strip() != "all":
         cd = course_direction.strip()
         query = query.filter(models.Student.course_direction.ilike(f"%{cd}%"))
+
+    if group_id and group_id.strip() and group_id.strip() != "all":
+        gid_str = group_id.strip()
+        if gid_str == "none":
+            query = query.filter(
+                ~models.Student.groups.any(
+                    or_(models.Group.is_deleted == 0, models.Group.is_deleted == None)
+                )
+            )
+        elif gid_str.isdigit():
+            query = query.filter(
+                models.Student.groups.any(models.Group.id == int(gid_str))
+            )
         
     total = query.count()
     items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
@@ -309,11 +341,13 @@ def delete_student(db: Session, student_id: int):
 # ============
 # Payments
 # ============
-def get_payments(db: Session, skip: int = 0, limit: int = 100):
+def get_payments(db: Session, skip: int = 0, limit: int = 500):
     return (
         db.query(models.Payment)
         .join(models.Student, models.Payment.student_id == models.Student.id)
         .filter(
+            or_(models.Payment.is_deleted == 0, models.Payment.is_deleted == None),
+            or_(models.Payment.status == None, ~models.Payment.status.ilike("%ջնջված%")),
             or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
             or_(models.Student.status == None, ~models.Student.status.ilike("%ջնջված%"))
         )
@@ -324,30 +358,74 @@ def get_payments(db: Session, skip: int = 0, limit: int = 100):
     )
 
 def create_payment(db: Session, payment: schemas.PaymentCreate):
-    db_payment = models.Payment(**payment.dict())
+    db_payment = models.Payment(**payment.dict(), status="Ակտիվ", is_deleted=0)
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)
+    return db_payment
+
+def update_payment(db: Session, payment_id: int, payment: schemas.PaymentUpdate):
+    db_payment = db.query(models.Payment).filter(
+        models.Payment.id == payment_id,
+        or_(models.Payment.is_deleted == 0, models.Payment.is_deleted == None)
+    ).first()
+    if db_payment:
+        update_data = payment.dict(exclude_unset=True)
+        for key, value in update_data.items():
+            setattr(db_payment, key, value)
+        db.commit()
+        db.refresh(db_payment)
+    return db_payment
+
+def delete_payment(db: Session, payment_id: int):
+    import datetime
+    db_payment = db.query(models.Payment).filter(models.Payment.id == payment_id).first()
+    if db_payment:
+        db_payment.status = "Ջնջված"
+        db_payment.is_deleted = 1
+        db_payment.deleted_at = datetime.datetime.utcnow()
+        db.commit()
+        db.refresh(db_payment)
     return db_payment
 
 # ============
 # Courses
 # ============
 def get_courses(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Course).offset(skip).limit(limit).all()
+    return (
+        db.query(models.Course)
+        .filter(
+            or_(models.Course.is_deleted == 0, models.Course.is_deleted == None),
+            or_(models.Course.status == None, models.Course.status != "Ջնջված")
+        )
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 def create_course(db: Session, course: schemas.CourseCreate):
-    db_course = models.Course(**course.dict())
+    db_course = models.Course(**course.dict(), status="Ակտիվ", is_deleted=0)
     db.add(db_course)
     db.commit()
     db.refresh(db_course)
     return db_course
 
 def get_course(db: Session, course_id: int):
-    return db.query(models.Course).filter(models.Course.id == course_id).first()
+    return (
+        db.query(models.Course)
+        .filter(
+            models.Course.id == course_id,
+            or_(models.Course.is_deleted == 0, models.Course.is_deleted == None),
+            or_(models.Course.status == None, models.Course.status != "Ջնջված")
+        )
+        .first()
+    )
 
 def update_course(db: Session, course_id: int, course: schemas.CourseUpdate):
-    db_course = db.query(models.Course).filter(models.Course.id == course_id).first()
+    db_course = db.query(models.Course).filter(
+        models.Course.id == course_id,
+        or_(models.Course.is_deleted == 0, models.Course.is_deleted == None)
+    ).first()
     if db_course:
         update_data = course.dict(exclude_unset=True)
         for key, value in update_data.items():
@@ -357,16 +435,21 @@ def update_course(db: Session, course_id: int, course: schemas.CourseUpdate):
     return db_course
 
 def delete_course(db: Session, course_id: int):
+    import datetime
     db_course = db.query(models.Course).filter(models.Course.id == course_id).first()
     if db_course:
-        db.delete(db_course)
+        db_course.status = "Ջնջված"
+        db_course.is_deleted = 1
+        db_course.deleted_at = datetime.datetime.utcnow()
         db.commit()
+        db.refresh(db_course)
     return db_course
 
 # ============
 # Instructors
 # ============
 import datetime
+import calendar
 
 def ensure_group_instructor_history(db: Session, grp: models.Group):
     try:
@@ -401,10 +484,32 @@ def ensure_group_instructor_history(db: Session, grp: models.Group):
     except Exception as e:
         print("ensure_group_instructor_history error:", e)
 
-def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
+def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, target_month: str = None):
     today = datetime.date.today()
-    first_of_month = datetime.date(today.year, today.month, 1)
+    is_current_month = True
+    if target_month and len(target_month.strip()) >= 7:
+        try:
+            parts = target_month.strip()[:7].split("-")
+            t_year, t_month = int(parts[0]), int(parts[1])
+            first_of_month = datetime.date(t_year, t_month, 1)
+            if t_year == today.year and t_month == today.month:
+                end_of_period = today
+                is_current_month = True
+            else:
+                last_day = calendar.monthrange(t_year, t_month)[1]
+                end_of_period = datetime.date(t_year, t_month, last_day)
+                is_current_month = False
+        except Exception:
+            first_of_month = datetime.date(today.year, today.month, 1)
+            end_of_period = today
+            is_current_month = True
+    else:
+        first_of_month = datetime.date(today.year, today.month, 1)
+        end_of_period = today
+        is_current_month = True
+
     first_of_month_str = str(first_of_month)
+    end_of_period_str = str(end_of_period)
 
     monthly_lessons = 0
     total_lessons_taught = 0
@@ -413,7 +518,7 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
     group_map = {g.id: g for g in groups}
 
     for grp in groups:
-        if grp.instructor_id == instructor.id and grp.name and not getattr(grp, 'is_deleted', 0):
+        if grp.instructor_id == instructor.id and grp.name and not is_record_deleted(grp):
             assigned_groups.append(grp.name)
 
     # Calculate total lessons taught across all groups (past & current) from GroupInstructorHistory
@@ -425,7 +530,7 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
             seen_active_groups = set()
             for h in hist_records:
                 grp = group_map.get(h.group_id)
-                if h.unassigned_date is None and grp:
+                if h.unassigned_date is None and grp and not is_record_deleted(grp):
                     seen_active_groups.add(grp.id)
                     taught = max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
                     total_lessons_taught += taught
@@ -433,17 +538,27 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
                     total_lessons_taught += (h.lessons_taught or 0)
 
             for grp in groups:
-                if grp.instructor_id == instructor.id and grp.id not in seen_active_groups:
+                if grp.instructor_id == instructor.id and grp.id not in seen_active_groups and not is_record_deleted(grp):
                     total_lessons_taught += (grp.conducted_lessons or 0)
         except Exception as he:
             print("hist calc error:", he)
 
-    # Calculate current month lessons (including lessons taught by this instructor before being reassigned this month)
+    if end_of_period > today and not is_current_month:
+        # Future month selected
+        return {
+            "current_month_lessons": 0,
+            "current_month_salary": 0,
+            "total_lessons_taught": total_lessons_taught,
+            "assigned_groups": assigned_groups
+        }
+
+    # Calculate target month lessons (including lessons taught by this instructor before being reassigned)
     if db is not None:
         try:
             explicit_month_lessons = db.query(models.GroupLesson).filter(
                 models.GroupLesson.instructor_id == instructor.id,
-                models.GroupLesson.lesson_date >= first_of_month_str
+                models.GroupLesson.lesson_date >= first_of_month_str,
+                models.GroupLesson.lesson_date <= end_of_period_str
             ).all()
         except Exception:
             explicit_month_lessons = []
@@ -456,13 +571,13 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
         if grp and grp.start_date:
             try:
                 parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
-                if parsed_start <= today:
+                if parsed_start <= end_of_period:
                     monthly_lessons += 1
                     groups_with_explicit.add(grp.id)
             except Exception:
                 pass
 
-    # For groups where instructor is currently assigned or was assigned this month without explicit instructor_id on GroupLesson
+    # For groups where instructor is currently assigned or was assigned in target month without explicit instructor_id on GroupLesson
     for grp in groups:
         if grp.id in groups_with_explicit:
             continue
@@ -472,10 +587,9 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
             parsed_start = datetime.datetime.strptime(grp.start_date[:10], "%Y-%m-%d").date()
         except Exception:
             continue
-        if parsed_start > today:
+        if parsed_start > end_of_period:
             continue
 
-        # Check if this instructor has an active history or a closed history in this month for grp
         inst_taught_in_grp = 0
         if db is not None:
             h_list = db.query(models.GroupInstructorHistory).filter(
@@ -484,9 +598,11 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
             ).all()
             if h_list:
                 for h in h_list:
+                    if h.assigned_date and h.assigned_date[:10] > end_of_period_str:
+                        continue
                     if h.unassigned_date is None:
                         inst_taught_in_grp += max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
-                    elif h.unassigned_date >= first_of_month_str:
+                    elif h.unassigned_date[:10] >= first_of_month_str:
                         inst_taught_in_grp += (h.lessons_taught or 0)
             elif grp.instructor_id == instructor.id:
                 inst_taught_in_grp = grp.conducted_lessons or 0
@@ -499,12 +615,12 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
         # Legacy GroupLesson rows without instructor_id
         untagged_month_lessons = [
             l for l in (grp.lessons or [])
-            if getattr(l, 'instructor_id', None) is None and l.lesson_date and l.lesson_date >= first_of_month_str
+            if getattr(l, 'instructor_id', None) is None and l.lesson_date and first_of_month_str <= l.lesson_date <= end_of_period_str
         ]
         if untagged_month_lessons and grp.instructor_id == instructor.id:
             monthly_lessons += min(inst_taught_in_grp, len(untagged_month_lessons))
         else:
-            if parsed_start >= first_of_month:
+            if parsed_start >= first_of_month and is_current_month:
                 monthly_lessons += inst_taught_in_grp
             else:
                 day_patterns = [
@@ -524,18 +640,19 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
                 
                 month_days = 0
                 if active_weekdays:
-                    curr = first_of_month
-                    while curr <= today:
+                    curr = max(first_of_month, parsed_start)
+                    while curr <= end_of_period:
                         if curr.weekday() in active_weekdays:
                             month_days += 1
                         curr += datetime.timedelta(days=1)
                 monthly_lessons += min(inst_taught_in_grp, month_days)
 
-    custom_m = getattr(instructor, "custom_month_lessons", None)
-    if custom_m is not None:
-        diff_m = max(0, custom_m) - monthly_lessons
-        monthly_lessons = max(0, custom_m)
-        total_lessons_taught = max(monthly_lessons, total_lessons_taught + diff_m)
+    if is_current_month:
+        custom_m = getattr(instructor, "custom_month_lessons", None)
+        if custom_m is not None:
+            diff_m = max(0, custom_m) - monthly_lessons
+            monthly_lessons = max(0, custom_m)
+            total_lessons_taught = max(monthly_lessons, total_lessons_taught + diff_m)
 
     if total_lessons_taught < monthly_lessons:
         total_lessons_taught = monthly_lessons
@@ -548,10 +665,10 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None):
         "assigned_groups": assigned_groups
     }
 
-def enrich_instructor(instructor, groups, db: Session = None):
+def enrich_instructor(instructor, groups, db: Session = None, target_month: str = None):
     if not instructor:
         return None
-    stats = calculate_instructor_monthly_stats(instructor, groups, db=db)
+    stats = calculate_instructor_monthly_stats(instructor, groups, db=db, target_month=target_month)
     instructor.current_month_lessons = stats["current_month_lessons"]
     instructor.current_month_salary = stats["current_month_salary"]
     instructor.total_lessons_taught = stats["total_lessons_taught"]
@@ -562,7 +679,7 @@ def enrich_instructor(instructor, groups, db: Session = None):
         instructor.lesson_edit_history = []
     return instructor
 
-def get_instructors(db: Session, skip: int = 0, limit: int = 100, include_deleted: bool = False):
+def get_instructors(db: Session, skip: int = 0, limit: int = 100, include_deleted: bool = False, month: str = None):
     auto_check_daily_group_lessons(db)
     query = db.query(models.Instructor).filter(
         or_(models.Instructor.is_deleted == 0, models.Instructor.is_deleted == None),
@@ -573,7 +690,7 @@ def get_instructors(db: Session, skip: int = 0, limit: int = 100, include_delete
     for grp in groups:
         ensure_group_instructor_history(db, grp)
     for inst in instructors:
-        enrich_instructor(inst, groups, db=db)
+        enrich_instructor(inst, groups, db=db, target_month=month)
     return instructors
 
 def create_instructor(db: Session, instructor: schemas.InstructorCreate):
@@ -798,6 +915,9 @@ def enrich_group(grp, db: Session = None):
     if getattr(grp, "instructor", None) and is_record_deleted(grp.instructor):
         grp.instructor = None
         grp.instructor_id = None
+
+    if getattr(grp, "course", None) and is_record_deleted(grp.course):
+        grp.course = None
 
     active_students = [st for st in (getattr(grp, 'students', []) or []) if not is_record_deleted(st)]
     for st in active_students:

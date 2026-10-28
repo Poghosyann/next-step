@@ -156,10 +156,17 @@ const StudentProfile = () => {
                 <p className="font-medium">{student.email}</p>
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Զեղչ</p>
-                <p className="font-medium">
-                  {student.monthly_fee?.toLocaleString()} ֏
-                  {student.discount_percent > 0 && <span className="text-brand ml-2 bg-brand/10 px-2 py-0.5 rounded text-sm">-{student.discount_percent}%</span>}
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Զեղչ / Նվեր քարտ</p>
+                <p className="font-medium flex items-center flex-wrap gap-1.5">
+                  <span>{student.monthly_fee?.toLocaleString()} ֏</span>
+                  {student.discount_percent > 0 && (
+                    <span className="text-brand bg-brand/10 px-2 py-0.5 rounded text-xs font-bold">-{student.discount_percent}%</span>
+                  )}
+                  {student.gift_card > 0 && (
+                    <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-xs font-bold">
+                      🎁 -{student.gift_card.toLocaleString()} ֏
+                    </span>
+                  )}
                 </p>
               </div>
 
@@ -450,11 +457,17 @@ const StudentProfile = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար</label>
-                    <input required type="number" name="monthly_fee" value={formData.monthly_fee || 0} onChange={handleChange} className="glass-input w-full" />
+                    <input required type="number" min="0" name="monthly_fee" value={formData.monthly_fee ?? 0} onChange={handleChange} className="glass-input w-full" />
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Զեղչ (%)</label>
-                    <input type="number" name="discount_percent" value={formData.discount_percent || 0} onChange={handleChange} className="glass-input w-full" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Զեղչ (%)</label>
+                      <input type="number" min="0" max="100" name="discount_percent" value={formData.discount_percent ?? 0} onChange={handleChange} className="glass-input w-full" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Նվեր քարտ (֏)</label>
+                      <input type="number" min="0" name="gift_card" value={formData.gift_card ?? 0} onChange={handleChange} className="glass-input w-full" />
+                    </div>
                   </div>
                 </div>
               </div>

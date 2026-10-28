@@ -26,6 +26,9 @@ def init_db_if_needed():
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_lessons INTEGER DEFAULT 0;",
+                    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ակտիվ';",
+                    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
+                    "ALTER TABLE courses ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS conducted_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_lesson_date VARCHAR;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ակտիվ';",
@@ -35,6 +38,9 @@ def init_db_if_needed():
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS custom_lessons_attended INTEGER;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
+                    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ակտիվ';",
+                    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
+                    "ALTER TABLE payments ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS initial_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;",
                     "ALTER TABLE group_lessons ADD COLUMN IF NOT EXISTS instructor_id INTEGER;",
@@ -124,25 +130,67 @@ def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db)):
 
 @app.get("/api/stats")
 def get_stats(db: Session = Depends(get_db)):
+    import datetime
     from sqlalchemy import func, or_
-    active_student_filter = [
+    non_deleted_student_filter = [
         or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
         or_(models.Student.status == None, ~models.Student.status.ilike("%ջնջված%"))
     ]
-    students_count = db.query(models.Student).filter(*active_student_filter).count()
-    courses_count = db.query(models.Course).count()
+    students_count = db.query(models.Student).filter(*non_deleted_student_filter).count()
+    courses_count = db.query(models.Course).filter(
+        or_(models.Course.is_deleted == 0, models.Course.is_deleted == None),
+        or_(models.Course.status == None, models.Course.status != "Ջնջված")
+    ).count()
     instructors_count = db.query(models.Instructor).filter(
         or_(models.Instructor.is_deleted == 0, models.Instructor.is_deleted == None),
         or_(models.Instructor.status == None, models.Instructor.status != "Ջնջված")
     ).count()
-    monthly_revenue = db.query(func.sum(models.Student.monthly_fee)).filter(*active_student_filter).scalar() or 0
+
+    # Calculate expected monthly revenue only for active (non-archived, non-deleted) students, taking discount & gift_card into account
+    active_students = db.query(models.Student).filter(
+        *non_deleted_student_filter,
+        or_(models.Student.status == None, models.Student.status.notin_(["Արխիվ", "Ավարտած", "Ջնջված"]))
+    ).all()
+    monthly_revenue = 0
+    for st in active_students:
+        fee = st.monthly_fee or 0
+        disc = st.discount_percent or 0
+        if disc > 0:
+            fee = int(round(fee * (1 - disc / 100.0)))
+        gc = st.gift_card or 0
+        if gc > 0:
+            fee = max(0, fee - gc)
+        monthly_revenue += fee
+
+    # Calculate actual payments received in the current calendar month
+    today = datetime.date.today()
+    first_of_month_dt = datetime.datetime(today.year, today.month, 1)
+    actual_month_revenue = (
+        db.query(func.sum(models.Payment.amount))
+        .join(models.Student, models.Payment.student_id == models.Student.id)
+        .filter(
+            models.Payment.payment_date >= first_of_month_dt,
+            or_(models.Payment.is_deleted == 0, models.Payment.is_deleted == None),
+            or_(models.Payment.status == None, ~models.Payment.status.ilike("%ջնջված%")),
+            *non_deleted_student_filter
+        )
+        .scalar() or 0
+    )
+
+    debts_info = crud.get_debtors(db)
+    total_debt_amount = debts_info.get("total_debt_amount", 0)
+    total_debtors = debts_info.get("total_debtors", 0)
     daily_trend = crud.get_monthly_student_trend(db, days_count=30)
     
     return {
         "total_students": students_count,
+        "active_students": len(active_students),
         "active_courses": courses_count,
         "instructors": instructors_count,
         "monthly_revenue": monthly_revenue,
+        "actual_month_revenue": actual_month_revenue,
+        "total_debt_amount": total_debt_amount,
+        "total_debtors": total_debtors,
         "daily_trend": daily_trend
     }
 
@@ -167,9 +215,18 @@ def read_students(
     search: Optional[str] = None,
     status: Optional[str] = None,
     course_direction: Optional[str] = None,
+    group_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    return crud.get_students(db, skip=skip, limit=limit, search=search, status=status, course_direction=course_direction)
+    return crud.get_students(
+        db,
+        skip=skip,
+        limit=limit,
+        search=search,
+        status=status,
+        course_direction=course_direction,
+        group_id=group_id
+    )
 
 @app.get("/api/students/{student_id}", response_model=schemas.Student)
 def read_student(student_id: int, db: Session = Depends(get_db)):
@@ -223,12 +280,26 @@ def update_student_lessons_endpoint(
     return updated
 
 @app.get("/api/payments", response_model=list[schemas.Payment])
-def read_payments(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_payments(skip: int = 0, limit: int = 500, db: Session = Depends(get_db)):
     return crud.get_payments(db, skip=skip, limit=limit)
 
 @app.post("/api/payments", response_model=schemas.Payment)
 def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
     return crud.create_payment(db=db, payment=payment)
+
+@app.put("/api/payments/{payment_id}", response_model=schemas.Payment)
+def update_payment(payment_id: int, payment: schemas.PaymentUpdate, db: Session = Depends(get_db)):
+    updated = crud.update_payment(db, payment_id, payment)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return updated
+
+@app.delete("/api/payments/{payment_id}")
+def delete_payment(payment_id: int, db: Session = Depends(get_db)):
+    deleted = crud.delete_payment(db, payment_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    return {"ok": True}
 
 
 @app.post("/api/courses", response_model=schemas.Course)
@@ -258,8 +329,14 @@ def create_instructor(instructor: schemas.InstructorCreate, db: Session = Depend
     return crud.create_instructor(db=db, instructor=instructor)
 
 @app.get("/api/instructors", response_model=list[schemas.Instructor])
-def read_instructors(skip: int = 0, limit: int = 100, include_deleted: bool = False, db: Session = Depends(get_db)):
-    return crud.get_instructors(db, skip=skip, limit=limit, include_deleted=include_deleted)
+def read_instructors(
+    skip: int = 0,
+    limit: int = 100,
+    include_deleted: bool = False,
+    month: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    return crud.get_instructors(db, skip=skip, limit=limit, include_deleted=include_deleted, month=month)
 
 @app.put("/api/instructors/{instructor_id}", response_model=schemas.Instructor)
 def update_instructor(instructor_id: int, instructor: schemas.InstructorUpdate, db: Session = Depends(get_db)):

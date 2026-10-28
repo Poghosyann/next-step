@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
-import { X, Plus, Trash2, Edit2, Phone, CalendarCheck, Coins, Users2, Search, BookOpen, Check } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Phone, CalendarCheck, Coins, Users2, Search, BookOpen, Check, Calendar } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Instructors = () => {
   const { addToast } = useToast();
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
   const [instructors, setInstructors] = useState([]);
   const [courses, setCourses] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -12,6 +13,7 @@ const Instructors = () => {
   const [selectedSpecializations, setSelectedSpecializations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState(currentMonthStr);
   const [inlineEditId, setInlineEditId] = useState(null);
   const [inlineEditLessons, setInlineEditLessons] = useState(0);
 
@@ -23,22 +25,22 @@ const Instructors = () => {
   };
   const [formData, setFormData] = useState(initialForm);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [instRes, courseRes] = await Promise.all([
-        api.get('/instructors'),
+        api.get('/instructors', { params: selectedMonth ? { month: selectedMonth } : {} }),
         api.get('/courses')
       ]);
-      setInstructors(instRes.data);
-      setCourses(courseRes.data);
+      setInstructors(instRes.data || []);
+      setCourses(courseRes.data || []);
     } catch (err) {
       console.error('Error fetching data:', err);
     }
-  };
+  }, [selectedMonth]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const openCreateModal = () => {
     setFormData(initialForm);
@@ -143,6 +145,8 @@ const Instructors = () => {
     return matchesSearch && matchesCourse;
   });
 
+  const totalMonthSalary = filteredInstructors.reduce((acc, inst) => acc + (inst.current_month_salary || 0), 0);
+
   return (
     <div className="p-8">
       {/* Header */}
@@ -157,47 +161,72 @@ const Instructors = () => {
       </div>
 
       {/* Filters & Search */}
-      <div className="glass-panel p-4 mb-8 flex flex-col md:flex-row items-center gap-4">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-          <input 
-            type="text" 
-            placeholder="Որոնել դասախոսի (անուն, հեռախոս, մասնագիտացում)..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="glass-input w-full pl-10 pr-8 py-2 text-sm"
-          />
-          {searchQuery && (
-            <button 
-              type="button" 
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+      <div className="glass-panel p-4 mb-8 flex flex-col lg:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col md:flex-row items-center gap-3 w-full flex-1">
+          <div className="relative flex-1 w-full min-w-[220px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+            <input 
+              type="text" 
+              placeholder="Որոնել դասախոսի (անուն, հեռախոս, մասնագիտացում)..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="glass-input w-full pl-10 pr-8 py-2 text-sm"
+            />
+            {searchQuery && (
+              <button 
+                type="button" 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <BookOpen size={16} className="text-gray-400 hidden sm:block" />
+            <select 
+              value={filterCourse}
+              onChange={(e) => setFilterCourse(e.target.value)}
+              className="glass-input w-full md:w-56 py-2 text-sm"
             >
-              <X size={14} />
-            </button>
-          )}
+              <option value="">Բոլոր դասընթացները</option>
+              {courses.map(course => (
+                <option key={course.id} value={course.title}>{course.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative w-full md:w-auto">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value || currentMonthStr)}
+                className="glass-input pl-9 py-2 text-sm w-full md:w-44"
+                title="Ընտրեք ամիսը աշխատավարձի պատմությունը դիտելու համար"
+              />
+            </div>
+            {selectedMonth !== currentMonthStr && (
+              <button
+                type="button"
+                onClick={() => setSelectedMonth(currentMonthStr)}
+                className="text-xs font-semibold text-brand bg-brand/10 hover:bg-brand/20 px-2.5 py-2 rounded-lg transition whitespace-nowrap"
+              >
+                Այս ամիս
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          <BookOpen size={16} className="text-gray-400 hidden sm:block" />
-          <select 
-            value={filterCourse}
-            onChange={(e) => setFilterCourse(e.target.value)}
-            className="glass-input w-full md:w-64 py-2 text-sm"
-          >
-            <option value="">Բոլոր դասընթացները</option>
-            {courses.map(course => (
-              <option key={course.id} value={course.title}>{course.title}</option>
-            ))}
-          </select>
-          {filterCourse && (
-            <button
-              onClick={() => setFilterCourse('')}
-              className="text-xs text-gray-500 hover:text-black underline whitespace-nowrap"
-            >
-              Մաքրել
-            </button>
-          )}
+        <div className="flex items-center gap-2 bg-green-50 border border-green-200 px-4 py-2 rounded-xl w-full lg:w-auto justify-between lg:justify-end">
+          <span className="text-xs text-green-800 font-medium whitespace-nowrap">
+            Աշխատավարձերի ֆոնդ ({selectedMonth}):
+          </span>
+          <span className="text-base font-extrabold text-green-700 whitespace-nowrap">
+            {totalMonthSalary.toLocaleString()} ֏
+          </span>
         </div>
       </div>
 
@@ -270,7 +299,7 @@ const Instructors = () => {
 
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-gray-500 flex items-center gap-1">
-                      <CalendarCheck size={13} className="text-gray-400" /> Արված դասեր (ամսվա 1-ից)
+                      <CalendarCheck size={13} className="text-gray-400" /> Արված դասեր ({selectedMonth === currentMonthStr ? 'այս ամիս' : selectedMonth})
                     </span>
                     {inlineEditId === instructor.id ? (
                       <div className="flex items-center gap-1">

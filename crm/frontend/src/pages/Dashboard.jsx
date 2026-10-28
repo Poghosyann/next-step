@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { TrendingUp, TrendingDown, Users, BookOpen, GraduationCap, DollarSign } from 'lucide-react';
+import { Users, BookOpen, GraduationCap, DollarSign, Wallet, AlertCircle } from 'lucide-react';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
     total_students: 0,
+    active_students: 0,
     active_courses: 0,
     instructors: 0,
     monthly_revenue: 0,
+    actual_month_revenue: 0,
+    total_debt_amount: 0,
+    total_debtors: 0,
     daily_trend: []
   });
 
@@ -17,9 +21,13 @@ const Dashboard = () => {
         const res = await api.get('/stats');
         setStats({
           total_students: res.data.total_students || 0,
+          active_students: res.data.active_students ?? res.data.total_students ?? 0,
           active_courses: res.data.active_courses || 0,
           instructors: res.data.instructors || 0,
           monthly_revenue: res.data.monthly_revenue || 0,
+          actual_month_revenue: res.data.actual_month_revenue || 0,
+          total_debt_amount: res.data.total_debt_amount || 0,
+          total_debtors: res.data.total_debtors || 0,
           daily_trend: Array.isArray(res.data.daily_trend) ? res.data.daily_trend : []
         });
       } catch (err) {
@@ -39,19 +47,64 @@ const Dashboard = () => {
         <p className="text-gray-500">Բարի գալուստ CRM համակարգ։</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {[
-          { title: 'Ընդհանուր ուսանողներ', value: stats.total_students, icon: <Users size={22} /> },
-          { title: 'Ակտիվ դասընթացներ', value: stats.active_courses, icon: <BookOpen size={22} /> },
-          { title: 'Դասախոսներ', value: stats.instructors, icon: <GraduationCap size={22} /> },
-          { title: 'Ակնկալվող ամսական եկամուտ', value: `${stats.monthly_revenue.toLocaleString()} ֏`, icon: <DollarSign size={22} /> },
+          {
+            title: 'Ընդհանուր ուսանողներ',
+            value: stats.total_students,
+            sub: `Ակտիվ ուսանողներ՝ ${stats.active_students}`,
+            icon: <Users size={22} />,
+            color: 'text-brand',
+            bg: 'bg-brand/10 text-brand'
+          },
+          {
+            title: 'Ակտիվ դասընթացներ',
+            value: stats.active_courses,
+            sub: 'Գործող ուղղություններ',
+            icon: <BookOpen size={22} />,
+            color: 'text-brand',
+            bg: 'bg-brand/10 text-brand'
+          },
+          {
+            title: 'Դասախոսներ',
+            value: stats.instructors,
+            sub: 'Ակտիվ դասավանդողներ',
+            icon: <GraduationCap size={22} />,
+            color: 'text-brand',
+            bg: 'bg-brand/10 text-brand'
+          },
+          {
+            title: 'Ակնկալվող ամսական եկամուտ',
+            value: `${stats.monthly_revenue.toLocaleString()} ֏`,
+            sub: 'Հաշվի առնելով զեղչերը և նվեր քարտերը',
+            icon: <DollarSign size={22} />,
+            color: 'text-brand',
+            bg: 'bg-brand/10 text-brand'
+          },
+          {
+            title: 'Փաստացի մուտքեր (այս ամիս)',
+            value: `${stats.actual_month_revenue.toLocaleString()} ֏`,
+            sub: 'Ամսվա 1-ից գրանցված վճարումներ',
+            icon: <Wallet size={22} />,
+            color: 'text-emerald-600',
+            bg: 'bg-emerald-50 text-emerald-600'
+          },
+          {
+            title: 'Ընդհանուր պարտքեր',
+            value: `${stats.total_debt_amount.toLocaleString()} ֏`,
+            sub: `Պարտք ունեցող ուսանողներ՝ ${stats.total_debtors}`,
+            icon: <AlertCircle size={22} />,
+            color: stats.total_debt_amount > 0 ? 'text-red-600' : 'text-gray-700',
+            bg: stats.total_debt_amount > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-500'
+          },
         ].map((stat, idx) => (
           <div key={idx} className="glass-panel p-6 flex items-center justify-between">
             <div>
               <h3 className="text-gray-500 text-sm font-medium mb-1">{stat.title}</h3>
-              <p className="text-3xl font-bold text-brand">{stat.value}</p>
+              <p className={`text-2xl sm:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+              {stat.sub && <p className="text-xs text-gray-400 mt-1">{stat.sub}</p>}
             </div>
-            <div className="p-3 rounded-xl bg-brand/10 text-brand">
+            <div className={`p-3 rounded-xl ${stat.bg}`}>
               {stat.icon}
             </div>
           </div>

@@ -41,6 +41,9 @@ class Course(Base):
     title = Column(String, index=True)
     description = Column(String, nullable=True)
     total_lessons = Column(Integer, default=0)
+    status = Column(String, default="Ակտիվ")
+    is_deleted = Column(Integer, default=0)
+    deleted_at = Column(DateTime, nullable=True)
 
     groups = relationship("Group", back_populates="course")
 
@@ -159,5 +162,8 @@ class Payment(Base):
     payment_date = Column(DateTime, default=datetime.datetime.utcnow)
     method = Column(String)
     notes = Column(String)
+    status = Column(String, default="Ակտիվ")
+    is_deleted = Column(Integer, default=0)
+    deleted_at = Column(DateTime, nullable=True)
 
     student = relationship("Student", back_populates="payments")
