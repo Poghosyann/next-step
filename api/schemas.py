@@ -116,7 +116,7 @@ class StudentUpdate(BaseModel):
 
 class StudentGroupDetail(BaseModel):
     group_id: int
-    group_name: str
+    group_name: Optional[str] = ""
     course_title: Optional[str] = None
     days: Optional[str] = None
     start_time: Optional[str] = None
@@ -195,7 +195,7 @@ class GroupInstructorHistoryItem(BaseModel):
         orm_mode = True
 
 class GroupBase(BaseModel):
-    name: str
+    name: Optional[str] = ""
     course_id: int
     instructor_id: Optional[int] = None
     start_date: Optional[str] = None

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Plus, X, Search, Filter, Download, Edit2, Check, Users2 } from 'lucide-react';
+import { Plus, X, Search, Filter, Download, Edit2, Check } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -14,9 +14,7 @@ const Students = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterDirection, setFilterDirection] = useState('');
-  const [filterGroup, setFilterGroup] = useState('');
   const [coursesList, setCoursesList] = useState([]);
-  const [groupsList, setGroupsList] = useState([]);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [editingLessonsVal, setEditingLessonsVal] = useState(0);
   const limit = 20;
@@ -36,7 +34,6 @@ const Students = () => {
 
   useEffect(() => {
     api.get('/courses').then(res => setCoursesList(res.data || [])).catch(console.error);
-    api.get('/groups').then(res => setGroupsList(res.data || [])).catch(console.error);
   }, []);
 
   const [showModal, setShowModal] = useState(false);
@@ -54,7 +51,6 @@ const Students = () => {
       if (searchQuery && searchQuery.trim()) params.search = searchQuery.trim();
       if (filterStatus && filterStatus.trim()) params.status = filterStatus.trim();
       if (filterDirection && filterDirection.trim()) params.course_direction = filterDirection.trim();
-      if (filterGroup && filterGroup.trim()) params.group_id = filterGroup.trim();
 
       const response = await api.get('/students', { params });
       if (Array.isArray(response.data)) {
@@ -72,7 +68,7 @@ const Students = () => {
       setStudents([]);
       setTotalStudents(0);
     }
-  }, [page, searchQuery, filterStatus, filterDirection, filterGroup]);
+  }, [page, searchQuery, filterStatus, filterDirection]);
 
   useEffect(() => {
     fetchStudents();
@@ -116,12 +112,11 @@ const Students = () => {
       return;
     }
     
-    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Խումբ', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Արված դասեր', 'Ամսավճար', 'Զեղչ (%)', 'Նվեր քարտ (֏)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
+    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Արված դասեր', 'Ամսավճար', 'Զեղչ (%)', 'Նվեր քարտ (֏)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
     const rows = students.map(st => [
       st.id,
       `"${(st.full_name || '').replace(/"/g, '""')}"`,
       `"${(st.course_direction || '').replace(/"/g, '""')}"`,
-      `"${(st.group_names && st.group_names.length > 0 ? st.group_names.join(', ') : 'Առանց խմբի').replace(/"/g, '""')}"`,
       `"${(st.course_format || 'Օֆլայն').replace(/"/g, '""')}"`,
       `"${(st.phone || '').replace(/"/g, '""')}"`,
       `"${(st.email || '').replace(/"/g, '""')}"`,
@@ -196,20 +191,6 @@ const Students = () => {
           </div>
           <div className="relative">
             <select 
-              value={filterGroup} 
-              onChange={(e) => { setFilterGroup(e.target.value); setPage(1); }}
-              className="glass-input pl-10 py-2 appearance-none w-full md:w-48"
-            >
-              <option value="">Բոլոր խմբերը</option>
-              <option value="none">⚠️ Առանց խմբի</option>
-              {groupsList.map((grp) => (
-                <option key={grp.id} value={String(grp.id)}>{grp.name}</option>
-              ))}
-            </select>
-            <Users2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-          </div>
-          <div className="relative">
-            <select 
               value={filterStatus} 
               onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
               className="glass-input pl-10 py-2 appearance-none w-full md:w-44"
@@ -223,13 +204,12 @@ const Students = () => {
             </select>
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
           </div>
-          {(searchQuery || filterStatus || filterDirection || filterGroup) && (
+          {(searchQuery || filterStatus || filterDirection) && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setFilterStatus('');
                 setFilterDirection('');
-                setFilterGroup('');
                 setPage(1);
               }}
               className="text-sm font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 transition px-3 py-2 rounded-lg whitespace-nowrap"
@@ -247,7 +227,6 @@ const Students = () => {
               <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
                 <th className="p-3.5 whitespace-nowrap">Անուն Ազգանուն</th>
                 <th className="p-3.5 whitespace-nowrap">Ուղղություն</th>
-                <th className="p-3.5 whitespace-nowrap">Խումբ</th>
                 <th className="p-3.5 whitespace-nowrap">Ձևաչափ</th>
                 <th className="p-3.5 whitespace-nowrap">Հեռախոս</th>
                 <th className="p-3.5 whitespace-nowrap">Էլ. հասցե</th>
@@ -265,21 +244,6 @@ const Students = () => {
                 >
                   <td className="p-3.5 font-semibold text-gray-800 whitespace-nowrap">{st.full_name}</td>
                   <td className="p-3.5 text-brand font-semibold whitespace-nowrap">{st.course_direction}</td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    {st.group_names && st.group_names.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {st.group_names.map((gName, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 border border-amber-200/70">
-                            {gName}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 border border-gray-200">
-                        Առանց խմբի
-                      </span>
-                    )}
-                  </td>
                   <td className="p-3.5 whitespace-nowrap">
                     {st.course_format?.toLowerCase().includes('օնլայն') || st.course_format?.toLowerCase().includes('online') ? (
                       <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
@@ -358,7 +322,7 @@ const Students = () => {
                 </tr>
               ))}
               {students.length === 0 && (
-                <tr><td colSpan="9" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
+                <tr><td colSpan="8" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>

@@ -2,7 +2,7 @@ import datetime
 import models, schemas, crud
 from database import SessionLocal, engine
 
-SEED_MARKER_USERNAME = "__seed_v2_realistic_50__"
+SEED_MARKER_USERNAME = "__seed_v3_no_group_names__"
 
 def seed(force_reset: bool = False):
     models.Base.metadata.create_all(bind=engine)
@@ -100,10 +100,10 @@ def seed(force_reset: bool = False):
         db.refresh(inst2)
         db.refresh(inst3)
 
-        # 4. Create 10 Groups with varying conducted_lessons
+        # 4. Create 10 Groups with varying conducted_lessons (no group name)
         groups_spec = [
             {
-                "name": "ՖՀ-101",
+                "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst1.id,
                 "start_date": str(today - datetime.timedelta(days=55)),
@@ -114,7 +114,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 22
             },
             {
-                "name": "ՖՀ-102",
+                "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst1.id,
                 "start_date": str(today - datetime.timedelta(days=38)),
@@ -125,7 +125,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 15
             },
             {
-                "name": "ՖՀ-103 (Ցերեկային)",
+                "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst2.id,
                 "start_date": str(today - datetime.timedelta(days=24)),
@@ -136,7 +136,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 9
             },
             {
-                "name": "ՖՀ-104 (Սկսնակ)",
+                "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst1.id,
                 "start_date": str(today - datetime.timedelta(days=8)),
@@ -147,7 +147,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 3
             },
             {
-                "name": "ՀՀ-201",
+                "name": "",
                 "course_id": c_tax.id,
                 "instructor_id": inst2.id,
                 "start_date": str(today - datetime.timedelta(days=45)),
@@ -158,7 +158,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 18
             },
             {
-                "name": "ՀՀ-202",
+                "name": "",
                 "course_id": c_tax.id,
                 "instructor_id": inst2.id,
                 "start_date": str(today - datetime.timedelta(days=28)),
@@ -169,7 +169,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 11
             },
             {
-                "name": "ՀՀ-203 (Օնլայն)",
+                "name": "",
                 "course_id": c_tax.id,
                 "instructor_id": inst3.id,
                 "start_date": str(today - datetime.timedelta(days=14)),
@@ -180,7 +180,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 5
             },
             {
-                "name": "1C-301",
+                "name": "",
                 "course_id": c_1c.id,
                 "instructor_id": inst3.id,
                 "start_date": str(today - datetime.timedelta(days=35)),
@@ -191,7 +191,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 14
             },
             {
-                "name": "1C-302",
+                "name": "",
                 "course_id": c_1c.id,
                 "instructor_id": inst3.id,
                 "start_date": str(today - datetime.timedelta(days=18)),
@@ -202,7 +202,7 @@ def seed(force_reset: bool = False):
                 "conducted_lessons": 7
             },
             {
-                "name": "1C-303 (Նոր)",
+                "name": "",
                 "course_id": c_1c.id,
                 "instructor_id": inst1.id,
                 "start_date": str(today - datetime.timedelta(days=3)),

@@ -201,7 +201,7 @@ const Debts = () => {
               <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
                 <th className="p-3.5 whitespace-nowrap">Ուսանող</th>
                 <th className="p-3.5 whitespace-nowrap">Հեռախոսահամար</th>
-                <th className="p-3.5 whitespace-nowrap">Ուղղություն / Խումբ</th>
+                <th className="p-3.5 whitespace-nowrap">Ուղղություն</th>
                 <th className="p-3.5 text-center whitespace-nowrap">1 Դասի Արժեք</th>
                 <th className="p-3.5 text-center whitespace-nowrap">Արված Դասեր</th>
                 <th className="p-3.5 text-right whitespace-nowrap">Վճարված Է</th>
@@ -219,13 +219,6 @@ const Debts = () => {
                   <td className="p-3.5 font-medium text-gray-700 whitespace-nowrap">{st.phone}</td>
                   <td className="p-3.5 whitespace-nowrap">
                     <div className="text-brand font-semibold text-sm">{st.course_direction}</div>
-                    {st.group_names && st.group_names.length > 0 ? (
-                      <div className="text-xs text-gray-500 mt-0.5">
-                        {st.group_names.join(', ')}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-400 italic">Խմբին կցված չէ</div>
-                    )}
                   </td>
                   <td className="p-3.5 text-center text-sm font-medium text-gray-600 whitespace-nowrap">
                     {(st.lesson_cost || 0).toLocaleString()} ֏

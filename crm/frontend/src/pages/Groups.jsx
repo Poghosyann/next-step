@@ -14,7 +14,7 @@ const Groups = () => {
   const [editingGroupId, setEditingGroupId] = useState(null);
 
   const initialForm = {
-    name: '', course_id: '', instructor_id: '',
+    course_id: '', instructor_id: '',
     start_date: '', start_time: '', end_time: '', days: '',
     conducted_lessons: 0
   };
@@ -93,7 +93,6 @@ const Groups = () => {
       ]);
       setGroups(grRes.data);
       setCourses(cRes.data);
-      setInstructors(cRes.data); // Wait, in original code it was probably iRes.data
       setInstructors(iRes.data);
       setStudents(sRes.data.items || sRes.data);
     } catch (err) {
@@ -195,7 +194,6 @@ const Groups = () => {
 
   const openEditModal = (group) => {
     setFormData({
-      name: group.name || '',
       course_id: group.course_id || '',
       instructor_id: group.instructor_id || '',
       start_date: group.start_date || '',
@@ -239,7 +237,6 @@ const Groups = () => {
           <table className="w-full text-left text-gray-800">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
-                <th className="p-3.5 whitespace-nowrap">Խմբի Անվանում</th>
                 <th className="p-3.5 whitespace-nowrap">Դասընթաց</th>
                 <th className="p-3.5 whitespace-nowrap">Դասախոս</th>
                 <th className="p-3.5 whitespace-nowrap">Օրեր</th>
@@ -276,25 +273,22 @@ const Groups = () => {
                         : 'border-gray-50 hover:bg-gray-50 border-l-4 border-l-transparent'
                     }`}
                   >
-                    <td className="p-3.5 font-bold text-gray-800 whitespace-nowrap">
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">
                       <div className="flex flex-col gap-1 items-start">
                         <div className="flex items-center gap-2">
                           <Users2 size={16} className={isNotStarted ? "text-purple-600" : "text-brand"} />
-                          <span>{gr.name}</span>
+                          <div>
+                            <span className="font-bold text-gray-800">{gr.course?.title || 'Դասընթացը նշված չէ'}</span>
+                            {gr.course?.total_lessons > 0 && (
+                              <span className="text-[11px] text-gray-400 ml-1.5 font-normal">
+                                ({gr.course.total_lessons} դաս)
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {isNotStarted && (
                           <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-full">
                             <Clock size={11} /> Շուտով ({gr.start_date || 'Ամսաթիվը նշված չէ'})
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3.5 text-gray-600 whitespace-nowrap">
-                      <div>
-                        <span className="font-medium text-gray-800">{gr.course?.title}</span>
-                        {gr.course?.total_lessons > 0 && (
-                          <span className="text-[11px] text-gray-400 block font-normal">
-                            ({gr.course.total_lessons} դաս)
                           </span>
                         )}
                       </div>
@@ -387,7 +381,7 @@ const Groups = () => {
                 );
               })}
               {groups.length === 0 && (
-                <tr><td colSpan="8" className="p-12 text-center text-gray-400">Խմբեր չեն գտնվել</td></tr>
+                <tr><td colSpan="7" className="p-12 text-center text-gray-400">Խմբեր չեն գտնվել</td></tr>
               )}
             </tbody>
           </table>
@@ -406,21 +400,14 @@ const Groups = () => {
             
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Խմբի Անվանում *</label>
-                  <input required type="text" name="name" value={formData.name} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ ՖՀ-101" />
-                </div>
-                
-                <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց *</label>
-                  <select required name="course_id" value={formData.course_id} onChange={handleChange} className="glass-input w-full">
-                    <option value="">-- Ընտրեք Դասընթաց --</option>
-                    {courses.map(c => (
-                      <option key={c.id} value={c.id}>{c.title}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց *</label>
+                <select required name="course_id" value={formData.course_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
+                  <option value="">-- Ընտրեք Դասընթաց --</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
               </div>
               
               <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm space-y-4">

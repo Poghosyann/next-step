@@ -135,11 +135,9 @@ def calculate_student_balance(student, db: Session = None):
             init_lessons = links_map.get(grp.id, 0)
             attended = max(0, grp_conducted - init_lessons)
             total_lessons_attended += attended
-            if getattr(grp, 'name', None):
-                group_names.append(grp.name)
             student_groups.append({
                 "group_id": grp.id,
-                "group_name": grp.name or "",
+                "group_name": "",
                 "course_title": grp.course.title if (getattr(grp, 'course', None) and not is_record_deleted(grp.course)) else "",
                 "days": grp.days or "",
                 "start_time": grp.start_time or "",
@@ -518,8 +516,10 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, t
     group_map = {g.id: g for g in groups}
 
     for grp in groups:
-        if grp.instructor_id == instructor.id and grp.name and not is_record_deleted(grp):
-            assigned_groups.append(grp.name)
+        if grp.instructor_id == instructor.id and not is_record_deleted(grp):
+            c_title = grp.course.title if (getattr(grp, 'course', None) and not is_record_deleted(grp.course)) else "Խումբ"
+            label = f"{c_title} ({grp.days})" if getattr(grp, 'days', None) else c_title
+            assigned_groups.append(label)
 
     # Calculate total lessons taught across all groups (past & current) from GroupInstructorHistory
     if db is not None:
@@ -1017,7 +1017,8 @@ def conduct_group_lesson(db: Session, group_id: int):
         active_hist.lessons_taught = max(0, grp.conducted_lessons - (active_hist.start_lesson or 0))
     db.commit()
     db.refresh(grp)
-    log_lesson_edit(db, "group", grp.id, grp.name, old_c, grp.conducted_lessons, "Խմբի դասի ավելացում (+1)")
+    grp_course_label = grp.course.title if getattr(grp, 'course', None) else "Խումբ"
+    log_lesson_edit(db, "group", grp.id, grp_course_label, old_c, grp.conducted_lessons, "Խմբի դասի ավելացում (+1)")
     return enrich_group(grp, db=db)
 
 def revert_group_lesson(db: Session, group_id: int):
@@ -1041,11 +1042,13 @@ def revert_group_lesson(db: Session, group_id: int):
             active_hist.lessons_taught = max(0, grp.conducted_lessons - (active_hist.start_lesson or 0))
         db.commit()
         db.refresh(grp)
-        log_lesson_edit(db, "group", grp.id, grp.name, current, grp.conducted_lessons, "Խմբի դասի նվազեցում (-1)")
+        grp_course_label = grp.course.title if getattr(grp, 'course', None) else "Խումբ"
+        log_lesson_edit(db, "group", grp.id, grp_course_label, current, grp.conducted_lessons, "Խմբի դասի նվազեցում (-1)")
     return enrich_group(grp, db=db)
 
 def create_group(db: Session, group: schemas.GroupCreate):
     data = group.dict()
+    data["name"] = ""
     if data.get("conducted_lessons") is None:
         data["conducted_lessons"] = 0
     if not data.get("last_lesson_date"):
@@ -1067,6 +1070,7 @@ def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
         old_instructor_id = db_group.instructor_id
         old_conducted = db_group.conducted_lessons or 0
         update_data = group.dict(exclude_unset=True)
+        update_data["name"] = ""
         new_instructor_id = update_data.get("instructor_id", old_instructor_id)
         
         for key, value in update_data.items():
@@ -1076,13 +1080,14 @@ def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
 
         today_str = str(datetime.date.today())
         conducted = db_group.conducted_lessons or 0
+        grp_course_label = db_group.course.title if getattr(db_group, 'course', None) else "Խումբ"
 
         if conducted != old_conducted:
             log_lesson_edit(
                 db,
                 "group",
                 db_group.id,
-                db_group.name,
+                grp_course_label,
                 old_conducted,
                 conducted,
                 "Խմբի արված դասերի քանակի խմբագրում"
@@ -1137,7 +1142,7 @@ def update_group(db: Session, group_id: int, group: schemas.GroupUpdate):
                         active_hist.instructor_name,
                         old_inst_taught,
                         new_inst_taught,
-                        f"Խմբի ({db_group.name}) դասերի խմբագրմամբ դասախոսի դասերի փոփոխություն"
+                        "Խմբի դասերի խմբագրմամբ դասախոսի դասերի փոփոխություն"
                     )
 
         enrich_group(db_group, db=db)
@@ -1228,7 +1233,6 @@ def update_student_group_offset(
     db.commit()
     new_attended = max(0, grp_conducted - (lnk.initial_lessons or 0))
     if st and new_attended != old_attended:
-        grp_label = grp.name if grp else f"#{group_id}"
         log_lesson_edit(
             db,
             "student",
@@ -1236,7 +1240,7 @@ def update_student_group_offset(
             st.full_name,
             old_attended,
             new_attended,
-            f"Ուսանողի դասերի խմբագրում «{grp_label}» խմբում"
+            "Ուսանողի դասերի խմբագրում խմբում"
         )
     return get_student(db, student_id)
 

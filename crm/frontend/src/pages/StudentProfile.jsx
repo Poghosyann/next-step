@@ -264,10 +264,7 @@ const StudentProfile = () => {
                   <div key={sg.group_id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="font-bold text-gray-800 text-sm">{sg.group_name}</p>
-                        {sg.course_title && (
-                          <p className="text-xs text-brand font-semibold">{sg.course_title}</p>
-                        )}
+                        <p className="font-bold text-gray-800 text-sm">{sg.course_title || student.course_direction || 'Դասընթաց'}</p>
                       </div>
                       <span className="bg-brand/15 text-gray-800 border border-brand/30 text-xs font-bold px-2 py-0.5 rounded-md">
                         {sg.student_attended_lessons} դաս

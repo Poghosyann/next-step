@@ -80,6 +80,7 @@ def init_db_if_needed():
                         models.Student.status.ilike("%նոր%"),
                         ~models.Student.status.ilike("%անորոշ%")
                     ).update({models.Student.status: "Նոր"}, synchronize_session=False)
+                    db.query(models.Group).update({models.Group.name: ""}, synchronize_session=False)
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)
