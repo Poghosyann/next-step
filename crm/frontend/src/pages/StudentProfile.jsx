@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, CreditCard, Trash2, Edit2, X } from 'lucide-react';
+import { ArrowLeft, CreditCard, Trash2, Edit2, X, Users2, Check } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -10,8 +10,29 @@ const StudentProfile = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [student, setStudent] = useState(null);
+  const [coursesList, setCoursesList] = useState([]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [formData, setFormData] = useState({});
+  const [editingOffsetGroupId, setEditingOffsetGroupId] = useState(null);
+  const [offsetValue, setOffsetValue] = useState(0);
+
+  const defaultDirections = [
+    'Ֆինանսական հաշվառում',
+    'Հարկային հաշվառում',
+    '1C ՀԾ ծրագրեր',
+    'Գլխավոր հաշվապահի դասընթաց',
+    'Excel'
+  ];
+
+  const allDirections = Array.from(new Set([
+    ...defaultDirections,
+    ...coursesList.map(c => c.title),
+    ...(student?.course_direction ? [student.course_direction] : [])
+  ])).filter(Boolean);
+
+  useEffect(() => {
+    api.get('/courses').then(res => setCoursesList(res.data || [])).catch(console.error);
+  }, []);
 
   const fetchStudent = useCallback(async () => {
     try {
@@ -53,6 +74,20 @@ const StudentProfile = () => {
     }
   };
 
+  const handleSaveGroupOffset = async (groupId) => {
+    try {
+      const res = await api.put(`/students/${id}/groups/${groupId}`, {
+        initial_lessons: parseInt(offsetValue, 10) || 0
+      });
+      setStudent(res.data);
+      setEditingOffsetGroupId(null);
+      addToast('Խմբի մեկնարկային դասերի հաշվարկը թարմացվեց', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասերի հաշվարկը թարմացնելիս', 'error');
+    }
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -78,75 +113,160 @@ const StudentProfile = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         
         {/* Profile Card */}
-        <div className="col-span-1 glass-panel p-6">
-          <div className="flex flex-col items-center mb-6 pt-4">
-            <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
-            <p className="text-brand font-bold text-center mt-1">{student.course_direction}</p>
-            <div className="mt-3 flex items-center gap-2">
-              <StatusBadge status={student.status} />
-              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
-                student.course_format?.toLowerCase().includes('օնլայն') || student.course_format?.toLowerCase().includes('online')
-                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                  : 'bg-purple-50 text-purple-700 border-purple-200'
-              }`}>
-                {student.course_format || 'Օֆլայն'}
-              </span>
+        <div className="col-span-1 space-y-6">
+          <div className="glass-panel p-6">
+            <div className="flex flex-col items-center mb-6 pt-4">
+              <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
+              <p className="text-brand font-bold text-center mt-1">{student.course_direction}</p>
+              <div className="mt-3 flex items-center gap-2">
+                <StatusBadge status={student.status} />
+                <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                  student.course_format?.toLowerCase().includes('օնլայն') || student.course_format?.toLowerCase().includes('online')
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-purple-50 text-purple-700 border-purple-200'
+                }`}>
+                  {student.course_format || 'Օֆլայն'}
+                </span>
+              </div>
+            </div>
+            
+            <div className="space-y-4 text-gray-700 border-t border-gray-100 pt-5">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Հեռախոսահամար</p>
+                <p className="font-medium">{student.phone}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Էլ. Հասցե</p>
+                <p className="font-medium">{student.email}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Զեղչ</p>
+                <p className="font-medium">
+                  {student.monthly_fee?.toLocaleString()} ֏
+                  {student.discount_percent > 0 && <span className="text-brand ml-2 bg-brand/10 px-2 py-0.5 rounded text-sm">-{student.discount_percent}%</span>}
+                </p>
+              </div>
+
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2 mt-4">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Հաշվեկշիռ և Բալանս</p>
+                
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Վճարված է:</span>
+                  <span className="font-bold text-gray-800">{(student.total_paid || 0).toLocaleString()} ֏</span>
+                </div>
+                
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">1 դասի արժեք:</span>
+                  <span className="font-medium text-gray-700">{(student.lesson_cost || 0).toLocaleString()} ֏</span>
+                </div>
+
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Մասնակցած դասեր:</span>
+                  <span className="font-semibold text-gray-700">{student.total_lessons_attended || 0} դաս</span>
+                </div>
+
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-500">Գանձված է:</span>
+                  <span className="font-medium text-gray-700">{(student.total_charged || 0).toLocaleString()} ֏</span>
+                </div>
+
+                <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
+                  <span className="text-sm font-bold text-gray-700">Ընթացիկ Բալանս:</span>
+                  {student.balance > 0 ? (
+                    <span className="text-emerald-700 bg-emerald-100/60 px-2.5 py-1 rounded-md font-extrabold text-sm border border-emerald-200">
+                      +{student.balance?.toLocaleString()} ֏
+                    </span>
+                  ) : (
+                    <span className="text-red-600 bg-red-100/60 px-2.5 py-1 rounded-md font-extrabold text-sm border border-red-200">
+                      {student.balance?.toLocaleString()} ֏
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="space-y-4 text-gray-700 border-t border-gray-100 pt-5">
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Հեռախոսահամար</p>
-              <p className="font-medium">{student.phone}</p>
+
+          {/* Assigned Groups & Per-Student Attendance Offset */}
+          <div className="glass-panel p-6">
+            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+              <Users2 className="text-brand" size={20} />
+              <h3 className="text-lg font-bold text-gray-800">Կցված Խմբեր</h3>
             </div>
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Էլ. Հասցե</p>
-              <p className="font-medium">{student.email}</p>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Զեղչ</p>
-              <p className="font-medium">
-                {student.monthly_fee?.toLocaleString()} ֏
-                {student.discount_percent > 0 && <span className="text-brand ml-2 bg-brand/10 px-2 py-0.5 rounded text-sm">-{student.discount_percent}%</span>}
+
+            {student.student_groups && student.student_groups.length > 0 ? (
+              <div className="space-y-3">
+                {student.student_groups.map((sg) => (
+                  <div key={sg.group_id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-200/80 space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="font-bold text-gray-800 text-sm">{sg.group_name}</p>
+                        {sg.course_title && (
+                          <p className="text-xs text-brand font-semibold">{sg.course_title}</p>
+                        )}
+                      </div>
+                      <span className="bg-brand/15 text-gray-800 border border-brand/30 text-xs font-bold px-2 py-0.5 rounded-md">
+                        {sg.student_attended_lessons} դաս
+                      </span>
+                    </div>
+
+                    {(sg.days || sg.start_time) && (
+                      <p className="text-xs text-gray-500">
+                        {sg.days} {sg.start_time ? `• ${sg.start_time}-${sg.end_time}` : ''}
+                      </p>
+                    )}
+
+                    <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-xs text-gray-600">
+                      <span>Խմբի արված դասեր՝ <b>{sg.group_conducted_lessons}</b></span>
+                      {editingOffsetGroupId === sg.group_id ? (
+                        <div className="flex items-center gap-1">
+                          <span className="text-[11px] text-gray-500">Բաց թողած մեկնարկին՝</span>
+                          <input
+                            type="number"
+                            min="0"
+                            max={sg.group_conducted_lessons}
+                            value={offsetValue}
+                            onChange={(e) => setOffsetValue(e.target.value)}
+                            className="w-14 px-1.5 py-0.5 text-xs border border-gray-300 rounded bg-white text-center font-bold"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveGroupOffset(sg.group_id)}
+                            className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                            title="Պահպանել"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingOffsetGroupId(null)}
+                            className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                            title="Չեղարկել"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingOffsetGroupId(sg.group_id);
+                            setOffsetValue(sg.initial_lessons || 0);
+                          }}
+                          className="text-[11px] text-gray-500 hover:text-black underline"
+                          title="Կարգավորել, եթե ուսանողը խմբին միացել է ուշ"
+                        >
+                          Միացել է {sg.initial_lessons > 0 ? `${sg.initial_lessons}-րդ դասից հետո` : 'սկզբից'} (փոխել)
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 italic text-center py-4">
+                Ուսանողը դեռևս որևէ խմբում ներառված չէ
               </p>
-            </div>
-
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 space-y-2 mt-4">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Հաշվեկշիռ և Բալանս</p>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Վճարված է:</span>
-                <span className="font-bold text-gray-800">{(student.total_paid || 0).toLocaleString()} ֏</span>
-              </div>
-              
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">1 դասի արժեք:</span>
-                <span className="font-medium text-gray-700">{(student.lesson_cost || 0).toLocaleString()} ֏</span>
-              </div>
-
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Արված դասեր:</span>
-                <span className="font-semibold text-gray-700">{student.total_lessons_attended || 0} դաս</span>
-              </div>
-
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Գանձված է:</span>
-                <span className="font-medium text-gray-700">{(student.total_charged || 0).toLocaleString()} ֏</span>
-              </div>
-
-              <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                <span className="text-sm font-bold text-gray-700">Ընթացիկ Բալանս:</span>
-                {student.balance > 0 ? (
-                  <span className="text-emerald-700 bg-emerald-100/60 px-2.5 py-1 rounded-md font-extrabold text-sm border border-emerald-200">
-                    +{student.balance?.toLocaleString()} ֏
-                  </span>
-                ) : (
-                  <span className="text-red-600 bg-red-100/60 px-2.5 py-1 rounded-md font-extrabold text-sm border border-red-200">
-                    {student.balance?.toLocaleString()} ֏
-                  </span>
-                )}
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
@@ -233,10 +353,9 @@ const StudentProfile = () => {
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Ուղղություն</label>
                     <select name="course_direction" value={formData.course_direction || ''} onChange={handleChange} className="glass-input w-full">
-                      <option>Ֆինանսական հաշվառում</option>
-                      <option>Հարկային հաշվառում</option>
-                      <option>1C ՀԾ ծրագրեր</option>
-                      <option>Գլխավոր հաշվապահի դասընթաց</option>
+                      {allDirections.map((dir, idx) => (
+                        <option key={idx} value={dir}>{dir}</option>
+                      ))}
                     </select>
                   </div>
                   <div>

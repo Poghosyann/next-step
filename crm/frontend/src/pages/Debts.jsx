@@ -15,6 +15,24 @@ const Debts = () => {
 
   const [search, setSearch] = useState('');
   const [courseFilter, setCourseFilter] = useState('all');
+  const [coursesList, setCoursesList] = useState([]);
+
+  const defaultDirections = [
+    'Ֆինանսական հաշվառում',
+    'Հարկային հաշվառում',
+    '1C ՀԾ ծրագրեր',
+    'Գլխավոր հաշվապահի դասընթաց',
+    'Excel'
+  ];
+
+  const allDirections = Array.from(new Set([
+    ...defaultDirections,
+    ...coursesList.map(c => c.title)
+  ])).filter(Boolean);
+
+  useEffect(() => {
+    api.get('/courses').then(res => setCoursesList(res.data || [])).catch(console.error);
+  }, []);
 
   // Quick Payment Modal state
   const [payingStudent, setPayingStudent] = useState(null);
@@ -152,10 +170,9 @@ const Debts = () => {
             className="glass-input w-full"
           >
             <option value="all">Բոլոր ուղղությունները</option>
-            <option value="Ֆինանսական հաշվառում">Ֆինանսական հաշվառում</option>
-            <option value="Հարկային հաշվառում">Հարկային հաշվառում</option>
-            <option value="1C ՀԾ ծրագրեր">1C ՀԾ ծրագրեր</option>
-            <option value="Գլխավոր հաշվապահի դասընթաց">Գլխավոր հաշվապահի դասընթաց</option>
+            {allDirections.map((dir, idx) => (
+              <option key={idx} value={dir}>{dir}</option>
+            ))}
           </select>
         </div>
       </div>

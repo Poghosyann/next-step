@@ -25,6 +25,8 @@ def init_db_if_needed():
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS conducted_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_lesson_date VARCHAR;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS course_format VARCHAR DEFAULT 'Օֆլայն';",
+                    "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS initial_lessons INTEGER DEFAULT 0;",
+                    "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;",
                 ]
                 for col_sql in ddl_statements:
                     try:
@@ -116,12 +118,14 @@ def get_stats(db: Session = Depends(get_db)):
     courses_count = db.query(models.Course).count()
     instructors_count = db.query(models.Instructor).count()
     monthly_revenue = db.query(func.sum(models.Student.monthly_fee)).scalar() or 0
+    daily_trend = crud.get_monthly_student_trend(db, days_count=30)
     
     return {
         "total_students": students_count,
         "active_courses": courses_count,
         "instructors": instructors_count,
-        "monthly_revenue": monthly_revenue
+        "monthly_revenue": monthly_revenue,
+        "daily_trend": daily_trend
     }
 
 @app.post("/api/students", response_model=schemas.Student)
@@ -164,6 +168,18 @@ def update_student(student_id: int, student: schemas.StudentUpdate, db: Session 
     updated = crud.update_student(db, student_id, student)
     if not updated:
         raise HTTPException(status_code=404, detail="Student not found")
+    return updated
+
+@app.put("/api/students/{student_id}/groups/{group_id}", response_model=schemas.Student)
+def update_student_group_offset_endpoint(
+    student_id: int,
+    group_id: int,
+    payload: schemas.StudentGroupOffsetUpdate,
+    db: Session = Depends(get_db)
+):
+    updated = crud.update_student_group_offset(db, student_id, group_id, payload.initial_lessons)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Student-group link not found")
     return updated
 
 @app.get("/api/payments", response_model=list[schemas.Payment])

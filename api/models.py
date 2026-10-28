@@ -13,8 +13,26 @@ class Admin(Base):
 group_student_table = Table(
     'group_student', Base.metadata,
     Column('group_id', Integer, ForeignKey('groups.id'), primary_key=True),
-    Column('student_id', Integer, ForeignKey('students.id'), primary_key=True)
+    Column('student_id', Integer, ForeignKey('students.id'), primary_key=True),
+    Column('initial_lessons', Integer, default=0),
+    Column('joined_at', DateTime, default=datetime.datetime.utcnow)
 )
+
+class StudentGroupLink(Base):
+    __tablename__ = "group_student"
+    __table_args__ = {'extend_existing': True}
+
+    group_id = Column(Integer, ForeignKey('groups.id'), primary_key=True)
+    student_id = Column(Integer, ForeignKey('students.id'), primary_key=True)
+    initial_lessons = Column(Integer, default=0)
+    joined_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class StudentDailySnapshot(Base):
+    __tablename__ = "student_daily_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    snapshot_date = Column(String, unique=True, index=True)
+    student_count = Column(Integer, default=0)
 
 class Course(Base):
     __tablename__ = "courses"

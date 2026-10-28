@@ -93,6 +93,20 @@ class StudentUpdate(BaseModel):
     comment: Optional[str] = None
     urgent_notes: Optional[str] = None
 
+class StudentGroupDetail(BaseModel):
+    group_id: int
+    group_name: str
+    course_title: Optional[str] = None
+    days: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    group_conducted_lessons: int = 0
+    initial_lessons: int = 0
+    student_attended_lessons: int = 0
+
+class StudentGroupOffsetUpdate(BaseModel):
+    initial_lessons: int
+
 class Student(StudentBase):
     id: int
     created_at: Optional[datetime] = None
@@ -103,6 +117,7 @@ class Student(StudentBase):
     lesson_cost: Optional[int] = 0
     balance: Optional[int] = 0
     group_names: Optional[List[str]] = []
+    student_groups: Optional[List[StudentGroupDetail]] = []
     class Config:
         orm_mode = True
 

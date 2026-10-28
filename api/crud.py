@@ -26,7 +26,26 @@ def update_admin_password(db: Session, username: str, new_password: str):
 # ============
 # Students & Balance
 # ============
-def calculate_student_balance(student):
+def record_daily_student_snapshot(db: Session):
+    try:
+        import datetime
+        today_str = str(datetime.date.today())
+        active_count = db.query(models.Student).filter(
+            models.Student.status.notin_(["Արխիվ", "Ավարտած"])
+        ).count()
+        snap = db.query(models.StudentDailySnapshot).filter(
+            models.StudentDailySnapshot.snapshot_date == today_str
+        ).first()
+        if snap:
+            snap.student_count = active_count
+        else:
+            snap = models.StudentDailySnapshot(snapshot_date=today_str, student_count=active_count)
+            db.add(snap)
+        db.commit()
+    except Exception as e:
+        print("record_daily_student_snapshot error:", e)
+
+def calculate_student_balance(student, db: Session = None):
     try:
         total_paid = sum((p.amount or 0) for p in (getattr(student, 'payments', []) or []))
         
@@ -37,13 +56,39 @@ def calculate_student_balance(student):
         
         lesson_cost = int(round(monthly_fee / 12.0)) if monthly_fee > 0 else 0
         
+        links_map = {}
+        if db is not None and getattr(student, 'id', None):
+            try:
+                links = db.query(models.StudentGroupLink).filter(
+                    models.StudentGroupLink.student_id == student.id
+                ).all()
+                for lnk in links:
+                    links_map[lnk.group_id] = lnk.initial_lessons or 0
+            except Exception as le:
+                print("links fetch error:", le)
+
         total_lessons_attended = 0
         group_names = []
+        student_groups = []
         groups = getattr(student, 'groups', []) or []
         for grp in groups:
-            total_lessons_attended += (getattr(grp, 'conducted_lessons', 0) or 0)
+            grp_conducted = getattr(grp, 'conducted_lessons', 0) or 0
+            init_lessons = links_map.get(grp.id, 0)
+            attended = max(0, grp_conducted - init_lessons)
+            total_lessons_attended += attended
             if getattr(grp, 'name', None):
                 group_names.append(grp.name)
+            student_groups.append({
+                "group_id": grp.id,
+                "group_name": grp.name or "",
+                "course_title": grp.course.title if getattr(grp, 'course', None) else "",
+                "days": grp.days or "",
+                "start_time": grp.start_time or "",
+                "end_time": grp.end_time or "",
+                "group_conducted_lessons": grp_conducted,
+                "initial_lessons": init_lessons,
+                "student_attended_lessons": attended
+            })
         
         total_charged = total_lessons_attended * lesson_cost
         balance = total_paid - total_charged
@@ -54,7 +99,8 @@ def calculate_student_balance(student):
             "total_lessons_attended": total_lessons_attended,
             "lesson_cost": lesson_cost,
             "balance": balance,
-            "group_names": group_names
+            "group_names": group_names,
+            "student_groups": student_groups
         }
     except Exception as e:
         print("calculate_student_balance error:", e)
@@ -64,20 +110,22 @@ def calculate_student_balance(student):
             "total_lessons_attended": 0,
             "lesson_cost": 0,
             "balance": 0,
-            "group_names": []
+            "group_names": [],
+            "student_groups": []
         }
 
-def enrich_student(student):
+def enrich_student(student, db: Session = None):
     if not student:
         return None
     try:
-        stats = calculate_student_balance(student)
+        stats = calculate_student_balance(student, db=db)
         student.total_paid = stats["total_paid"]
         student.total_charged = stats["total_charged"]
         student.total_lessons_attended = stats["total_lessons_attended"]
         student.lesson_cost = stats["lesson_cost"]
         student.balance = stats["balance"]
         student.group_names = stats["group_names"]
+        student.student_groups = stats["student_groups"]
     except Exception as e:
         print("enrich_student error:", e)
     return student
@@ -87,7 +135,7 @@ def get_student_by_email(db: Session, email: str):
 
 def get_student(db: Session, student_id: int):
     st = db.query(models.Student).filter(models.Student.id == student_id).first()
-    return enrich_student(st)
+    return enrich_student(st, db=db)
 
 from sqlalchemy import or_
 
@@ -114,7 +162,7 @@ def get_students(db: Session, skip: int = 0, limit: int = 100, search: str = Non
     items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
     for st in items:
         try:
-            enrich_student(st)
+            enrich_student(st, db=db)
         except Exception as e:
             print("enrich error on item:", e)
     return {"total": total, "items": items}
@@ -136,7 +184,7 @@ def get_debtors(db: Session, course_direction: str = None, search: str = None):
     debtors = []
     total_debt_amount = 0
     for st in all_students:
-        enrich_student(st)
+        enrich_student(st, db=db)
         if (st.balance or 0) < 0:
             debtors.append(st)
             total_debt_amount += abs(st.balance)
@@ -153,7 +201,8 @@ def create_student(db: Session, student: schemas.StudentCreate):
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
-    return enrich_student(db_student)
+    record_daily_student_snapshot(db)
+    return enrich_student(db_student, db=db)
 
 def update_student(db: Session, student_id: int, student: schemas.StudentUpdate):
     db_student = db.query(models.Student).filter(models.Student.id == student_id).first()
@@ -163,6 +212,8 @@ def update_student(db: Session, student_id: int, student: schemas.StudentUpdate)
             setattr(db_student, key, value)
         db.commit()
         db.refresh(db_student)
+        record_daily_student_snapshot(db)
+        enrich_student(db_student, db=db)
     return db_student
 
 def delete_student(db: Session, student_id: int):
@@ -170,6 +221,7 @@ def delete_student(db: Session, student_id: int):
     if student:
         db.delete(student)
         db.commit()
+        record_daily_student_snapshot(db)
     return student
 
 # ============
@@ -519,12 +571,88 @@ def add_students_to_group(db: Session, group_id: int, student_ids: list[int]):
     if not group:
         return None
     
-    students = db.query(models.Student).filter(models.Student.id.in_(student_ids)).all()
-    for student in students:
-        if student not in group.students:
-            group.students.append(student)
+    existing_links = db.query(models.StudentGroupLink).filter(
+        models.StudentGroupLink.group_id == group_id
+    ).all()
+    existing_student_ids = {lnk.student_id for lnk in existing_links}
+    target_student_ids = set(student_ids)
+
+    # Remove students no longer in the list
+    for lnk in existing_links:
+        if lnk.student_id not in target_student_ids:
+            db.delete(lnk)
+
+    # Add newly assigned students with initial_lessons = group.conducted_lessons
+    grp_conducted = group.conducted_lessons or 0
+    for sid in target_student_ids:
+        if sid not in existing_student_ids:
+            new_link = models.StudentGroupLink(
+                group_id=group_id,
+                student_id=sid,
+                initial_lessons=grp_conducted
+            )
+            db.add(new_link)
     
     db.commit()
     db.refresh(group)
-    return group
+    return enrich_group(group)
+
+def update_student_group_offset(db: Session, student_id: int, group_id: int, initial_lessons: int):
+    lnk = db.query(models.StudentGroupLink).filter(
+        models.StudentGroupLink.student_id == student_id,
+        models.StudentGroupLink.group_id == group_id
+    ).first()
+    if not lnk:
+        return None
+    lnk.initial_lessons = max(0, initial_lessons)
+    db.commit()
+    return get_student(db, student_id)
+
+def get_monthly_student_trend(db: Session, days_count: int = 30):
+    import datetime
+    record_daily_student_snapshot(db)
+    today = datetime.date.today()
+    start_date = today - datetime.timedelta(days=days_count - 1)
+
+    all_students = db.query(models.Student).all()
+    snapshots = db.query(models.StudentDailySnapshot).filter(
+        models.StudentDailySnapshot.snapshot_date >= str(start_date - datetime.timedelta(days=1))
+    ).all()
+    snap_map = {s.snapshot_date: s.student_count for s in snapshots}
+
+    def reconstruct_count_for_day(d: datetime.date):
+        d_str = str(d)
+        if d_str in snap_map:
+            return snap_map[d_str]
+        cnt = 0
+        for st in all_students:
+            st_date = None
+            if getattr(st, 'created_at', None):
+                try:
+                    st_date = st.created_at.date()
+                except Exception:
+                    pass
+            if st_date is None or st_date <= d:
+                cnt += 1
+        return cnt
+
+    result = []
+    prev_count = reconstruct_count_for_day(start_date - datetime.timedelta(days=1))
+
+    for i in range(days_count):
+        curr_day = start_date + datetime.timedelta(days=i)
+        curr_count = reconstruct_count_for_day(curr_day)
+        diff = curr_count - prev_count
+        status = "down" if diff < 0 else "up_or_same"
+        result.append({
+            "date": str(curr_day),
+            "label": curr_day.strftime("%d.%m"),
+            "count": curr_count,
+            "diff": diff,
+            "status": status
+        })
+        prev_count = curr_count
+
+    return result
+
 
