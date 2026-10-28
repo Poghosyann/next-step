@@ -142,9 +142,13 @@ const Debts = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Ընդհանուր Պարտքի Գումար</p>
-              <h3 className="text-3xl font-extrabold text-red-600 mt-2">
-                -{totalDebtAmount.toLocaleString()} ֏
-              </h3>
+              {loading ? (
+                <div className="h-9 w-40 bg-red-100/70 rounded-lg animate-pulse mt-2" />
+              ) : (
+                <h3 className="text-3xl font-extrabold text-red-600 mt-2">
+                  -{totalDebtAmount.toLocaleString()} ֏
+                </h3>
+              )}
             </div>
             <div className="p-4 bg-red-50 text-red-600 rounded-xl">
               <DollarSign size={32} />
@@ -156,9 +160,13 @@ const Debts = () => {
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm font-bold text-gray-500 uppercase tracking-wider">Պարտապան Ուսանողներ</p>
-              <h3 className="text-3xl font-extrabold text-gray-800 mt-2">
-                {totalDebtors} <span className="text-base font-normal text-gray-500">ուսանող</span>
-              </h3>
+              {loading ? (
+                <div className="h-9 w-32 bg-gray-200 rounded-lg animate-pulse mt-2" />
+              ) : (
+                <h3 className="text-3xl font-extrabold text-gray-800 mt-2">
+                  {totalDebtors} <span className="text-base font-normal text-gray-500">ուսանող</span>
+                </h3>
+              )}
             </div>
             <div className="p-4 bg-brand/10 text-brand rounded-xl">
               <Users size={32} />
@@ -210,7 +218,24 @@ const Debts = () => {
               </tr>
             </thead>
             <tbody>
-              {debtors.map((st) => (
+              {loading ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={idx} className="border-b border-gray-100 animate-pulse">
+                    <td className="p-3.5">
+                      <div className="h-4 w-36 bg-gray-200 rounded mb-1.5" />
+                      <div className="h-3 w-28 bg-gray-100 rounded" />
+                    </td>
+                    <td className="p-3.5"><div className="h-4 w-28 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-40 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5 text-center"><div className="h-4 w-16 bg-gray-200 rounded mx-auto" /></td>
+                    <td className="p-3.5 text-center"><div className="h-5 w-14 bg-gray-200 rounded mx-auto" /></td>
+                    <td className="p-3.5 text-right"><div className="h-4 w-20 bg-gray-200 rounded ml-auto" /></td>
+                    <td className="p-3.5 text-right"><div className="h-6 w-24 bg-red-100 rounded-md ml-auto" /></td>
+                    <td className="p-3.5 text-right"><div className="h-8 w-28 bg-gray-200 rounded-lg ml-auto" /></td>
+                  </tr>
+                ))
+              ) : (
+                debtors.map((st) => (
                 <tr key={st.id} className="border-b border-gray-100 hover:bg-red-50/20 transition">
                   <td className="p-3.5 whitespace-nowrap">
                     <div className="font-bold text-gray-800">{st.full_name}</div>
@@ -298,7 +323,8 @@ const Debts = () => {
                     </div>
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
               {debtors.length === 0 && !loading && (
                 <tr>
                   <td colSpan="8" className="p-16 text-center">

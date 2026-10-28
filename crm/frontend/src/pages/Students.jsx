@@ -10,6 +10,7 @@ const Students = () => {
   const { addToast } = useToast();
   const [students, setStudents] = useState([]);
   const [totalStudents, setTotalStudents] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -46,6 +47,7 @@ const Students = () => {
 
   const fetchStudents = useCallback(async () => {
     try {
+      setLoading(true);
       const skip = (page - 1) * limit;
       const params = { skip, limit };
       if (searchQuery && searchQuery.trim()) params.search = searchQuery.trim();
@@ -67,6 +69,8 @@ const Students = () => {
       console.error('Error fetching students:', error);
       setStudents([]);
       setTotalStudents(0);
+    } finally {
+      setLoading(false);
     }
   }, [page, searchQuery, filterStatus, filterDirection]);
 
@@ -236,92 +240,107 @@ const Students = () => {
               </tr>
             </thead>
             <tbody>
-              {students.map((st) => (
-                <tr 
-                  key={st.id} 
-                  onClick={() => navigate(`/students/${st.id}`)}
-                  className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
-                >
-                  <td className="p-3.5 font-semibold text-gray-800 whitespace-nowrap">{st.full_name}</td>
-                  <td className="p-3.5 text-brand font-semibold whitespace-nowrap">{st.course_direction}</td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    {st.course_format?.toLowerCase().includes('օնլայն') || st.course_format?.toLowerCase().includes('online') ? (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-                        🌐 Օնլայն
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                        🏢 Օֆլայն
-                      </span>
-                    )}
-                  </td>
-                  <td className="p-3.5 text-gray-600 whitespace-nowrap">{st.phone}</td>
-                  <td className="p-3.5 text-gray-500 whitespace-nowrap">{st.email}</td>
-                  <td className="p-3.5 whitespace-nowrap">
-                    <StatusBadge status={st.status} />
-                  </td>
-                  <td className="p-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    {editingStudentId === st.id ? (
-                      <div className="inline-flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          value={editingLessonsVal}
-                          onChange={(e) => setEditingLessonsVal(e.target.value)}
-                          className="w-16 px-2 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={(e) => handleSaveStudentLessons(e, st.id)}
-                          className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition"
-                          title="Պահպանել"
-                        >
-                          <Check size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); setEditingStudentId(null); }}
-                          className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
-                          title="Չեղարկել"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="inline-flex items-center gap-1.5 group/les">
-                        <span className="inline-block bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded text-xs font-bold border border-gray-200">
-                          {st.total_lessons_attended || 0} դաս
+              {loading ? (
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={idx} className="border-b border-gray-100 animate-pulse">
+                    <td className="p-3.5"><div className="h-4 w-36 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-40 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-5 w-20 bg-gray-200 rounded-full" /></td>
+                    <td className="p-3.5"><div className="h-4 w-28 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-36 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-5 w-24 bg-gray-200 rounded-full" /></td>
+                    <td className="p-3.5 text-center"><div className="h-5 w-14 bg-gray-200 rounded mx-auto" /></td>
+                    <td className="p-3.5 text-right"><div className="h-5 w-20 bg-gray-200 rounded ml-auto" /></td>
+                  </tr>
+                ))
+              ) : (
+                students.map((st) => (
+                  <tr 
+                    key={st.id} 
+                    onClick={() => navigate(`/students/${st.id}`)}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
+                  >
+                    <td className="p-3.5 font-semibold text-gray-800 whitespace-nowrap">{st.full_name}</td>
+                    <td className="p-3.5 text-brand font-semibold whitespace-nowrap">{st.course_direction}</td>
+                    <td className="p-3.5 whitespace-nowrap">
+                      {st.course_format?.toLowerCase().includes('օնլայն') || st.course_format?.toLowerCase().includes('online') ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+                          🌐 Օնլայն
                         </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingStudentId(st.id);
-                            setEditingLessonsVal(st.total_lessons_attended || 0);
-                          }}
-                          className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
-                          title="Խմբագրել ուսանողի դասերի քանակը"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                  <td className="p-3.5 text-right font-medium whitespace-nowrap">
-                    {st.balance > 0 ? (
-                      <span className="inline-block text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold text-xs">
-                        +{st.balance?.toLocaleString()} ֏
-                      </span>
-                    ) : (
-                      <span className="inline-block text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200 font-bold text-xs">
-                        {st.balance?.toLocaleString()} ֏
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {students.length === 0 && (
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                          🏢 Օֆլայն
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{st.phone}</td>
+                    <td className="p-3.5 text-gray-500 whitespace-nowrap">{st.email}</td>
+                    <td className="p-3.5 whitespace-nowrap">
+                      <StatusBadge status={st.status} />
+                    </td>
+                    <td className="p-3.5 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {editingStudentId === st.id ? (
+                        <div className="inline-flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            value={editingLessonsVal}
+                            onChange={(e) => setEditingLessonsVal(e.target.value)}
+                            className="w-16 px-2 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => handleSaveStudentLessons(e, st.id)}
+                            className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition"
+                            title="Պահպանել"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditingStudentId(null); }}
+                            className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
+                            title="Չեղարկել"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-center gap-1.5 group/les">
+                          <span className="inline-block bg-gray-100 text-gray-700 px-2.5 py-0.5 rounded text-xs font-bold border border-gray-200">
+                            {st.total_lessons_attended || 0} դաս
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingStudentId(st.id);
+                              setEditingLessonsVal(st.total_lessons_attended || 0);
+                            }}
+                            className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                            title="Խմբագրել ուսանողի դասերի քանակը"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-3.5 text-right font-medium whitespace-nowrap">
+                      {st.balance > 0 ? (
+                        <span className="inline-block text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-semibold text-xs">
+                          +{st.balance?.toLocaleString()} ֏
+                        </span>
+                      ) : (
+                        <span className="inline-block text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-200 font-bold text-xs">
+                          {st.balance?.toLocaleString()} ֏
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+              {!loading && students.length === 0 && (
                 <tr><td colSpan="8" className="p-12 text-center text-gray-400">Ուսանողներ չեն գտնվել</td></tr>
               )}
             </tbody>
@@ -331,19 +350,25 @@ const Students = () => {
         {/* Pagination UI */}
         <div className="p-4 border-t border-gray-100 flex justify-between items-center text-gray-600 bg-gray-50">
           <div>
-            Ընդհանուր <span className="font-bold text-gray-800">{totalStudents.toLocaleString()}</span> ուսանող
+            {loading ? (
+              <div className="h-5 w-36 bg-gray-200 rounded animate-pulse" />
+            ) : (
+              <>Ընդհանուր <span className="font-bold text-gray-800">{totalStudents.toLocaleString()}</span> ուսանող</>
+            )}
           </div>
           <div className="flex gap-2">
             <button 
-              disabled={page === 1} 
+              disabled={loading || page === 1} 
               onClick={() => setPage(p => p - 1)}
               className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
             >
               Նախորդ
             </button>
-            <span className="px-4 py-2 text-gray-800 font-medium">Էջ {page} / {Math.ceil(totalStudents / limit) || 1}</span>
+            <span className="px-4 py-2 text-gray-800 font-medium">
+              {loading ? '...' : `Էջ ${page} / ${Math.ceil(totalStudents / limit) || 1}`}
+            </span>
             <button 
-              disabled={page >= Math.ceil(totalStudents / limit)}
+              disabled={loading || page >= Math.ceil(totalStudents / limit)}
               onClick={() => setPage(p => p + 1)}
               className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
             >

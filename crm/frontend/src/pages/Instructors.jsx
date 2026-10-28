@@ -8,6 +8,7 @@ const Instructors = () => {
   const currentMonthStr = new Date().toISOString().slice(0, 7);
   const [instructors, setInstructors] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingInstructorId, setEditingInstructorId] = useState(null);
   const [selectedSpecializations, setSelectedSpecializations] = useState([]);
@@ -27,6 +28,7 @@ const Instructors = () => {
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
       const [instRes, courseRes] = await Promise.all([
         api.get('/instructors', { params: selectedMonth ? { month: selectedMonth } : {} }),
         api.get('/courses')
@@ -35,6 +37,8 @@ const Instructors = () => {
       setCourses(courseRes.data || []);
     } catch (err) {
       console.error('Error fetching data:', err);
+    } finally {
+      setLoading(false);
     }
   }, [selectedMonth]);
 
@@ -224,169 +228,213 @@ const Instructors = () => {
           <span className="text-xs text-green-800 font-medium whitespace-nowrap">
             Աշխատավարձերի ֆոնդ ({selectedMonth}):
           </span>
-          <span className="text-base font-extrabold text-green-700 whitespace-nowrap">
-            {totalMonthSalary.toLocaleString()} ֏
-          </span>
+          {loading ? (
+            <div className="h-5 w-24 bg-green-200/70 rounded animate-pulse" />
+          ) : (
+            <span className="text-base font-extrabold text-green-700 whitespace-nowrap">
+              {totalMonthSalary.toLocaleString()} ֏
+            </span>
+          )}
         </div>
       </div>
 
       {/* Instructors Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredInstructors.map((instructor) => {
-          const specList = instructor.specialization 
-            ? instructor.specialization.split(',').map(s => s.trim()).filter(Boolean)
-            : [];
-
-          return (
-            <div key={instructor.id} className="glass-panel p-6 flex flex-col justify-between hover:shadow-lg transition">
+        {loading ? (
+          Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="glass-panel p-6 flex flex-col justify-between animate-pulse">
               <div>
-                {/* Header Info */}
                 <div className="text-center mb-4">
-                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-brand/10 border-2 border-brand/30 flex items-center justify-center text-xl font-bold text-gray-800 shadow-sm">
-                    {instructor.first_name?.[0]}{instructor.last_name?.[0]}
+                  <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-gray-200" />
+                  <div className="h-6 w-40 bg-gray-200 rounded mx-auto mb-2.5" />
+                  <div className="flex justify-center gap-1.5 mt-2">
+                    <div className="h-5 w-24 bg-gray-200 rounded-full" />
+                    <div className="h-5 w-20 bg-gray-200 rounded-full" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-800 leading-tight">
-                    {instructor.first_name} {instructor.last_name}
-                  </h3>
-                  
-                  {/* Specializations Badges */}
-                  <div className="flex flex-wrap justify-center gap-1.5 mt-2.5 min-h-[26px]">
-                    {specList.length > 0 ? (
-                      specList.map((spec, sIdx) => (
-                        <span 
-                          key={sIdx} 
-                          className="bg-brand/15 text-gray-800 border border-brand/30 text-xs px-2.5 py-0.5 rounded-full font-medium"
-                        >
-                          {spec}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-gray-400 text-xs italic">Մասնագիտացումը նշված չէ</span>
-                    )}
-                  </div>
-                  
-                  <div className="inline-flex items-center gap-2 text-xs text-gray-600 mt-3 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                    <Phone size={12} /> {instructor.phone}
-                  </div>
+                  <div className="h-6 w-32 bg-gray-100 rounded-full mx-auto mt-3" />
                 </div>
-
-                {/* Assigned Groups */}
-                {instructor.assigned_groups && instructor.assigned_groups.length > 0 && (
-                  <div className="mb-4">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5">
-                      <Users2 size={13} /> Կցված խմբեր ({instructor.assigned_groups.length})
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {instructor.assigned_groups.map((groupName, gIdx) => (
-                        <span key={gIdx} className="bg-amber-50 text-amber-800 border border-amber-200/60 text-xs px-2 py-0.5 rounded-md font-medium">
-                          {groupName}
-                        </span>
-                      ))}
-                    </div>
+                <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-3 my-4">
+                  <div className="flex justify-between items-center">
+                    <div className="h-3.5 w-28 bg-gray-200 rounded" />
+                    <div className="h-4 w-16 bg-gray-200 rounded" />
                   </div>
-                )}
-
-                {/* Salary & Lessons Stats */}
-                <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-2.5 my-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 flex items-center gap-1">
-                      <Coins size={13} className="text-gray-400" /> 1 դասի վարձատրություն
-                    </span>
-                    <span className="font-bold text-gray-800">
-                      {(instructor.rate_per_lesson || 0).toLocaleString()} ֏
-                    </span>
+                  <div className="flex justify-between items-center">
+                    <div className="h-3.5 w-28 bg-gray-200 rounded" />
+                    <div className="h-5 w-14 bg-gray-200 rounded" />
                   </div>
-
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 flex items-center gap-1">
-                      <CalendarCheck size={13} className="text-gray-400" /> Արված դասեր ({selectedMonth === currentMonthStr ? 'այս ամիս' : selectedMonth})
-                    </span>
-                    {inlineEditId === instructor.id ? (
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min="0"
-                          value={inlineEditLessons}
-                          onChange={(e) => setInlineEditLessons(e.target.value)}
-                          className="w-16 px-1.5 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
-                          autoFocus
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleSaveInstructorLessons(instructor.id)}
-                          className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
-                          title="Պահպանել"
-                        >
-                          <Check size={12} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setInlineEditId(null)}
-                          className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
-                          title="Չեղարկել"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1">
-                        <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                          {instructor.current_month_lessons || 0} դաս
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setInlineEditId(instructor.id);
-                            setInlineEditLessons(instructor.current_month_lessons || 0);
-                          }}
-                          className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
-                          title="Խմբագրել դասախոսի դասերի քանակը"
-                        >
-                          <Edit2 size={12} />
-                        </button>
-                      </div>
-                    )}
+                  <div className="flex justify-between items-center">
+                    <div className="h-3.5 w-28 bg-gray-200 rounded" />
+                    <div className="h-5 w-14 bg-gray-200 rounded" />
                   </div>
-
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 flex items-center gap-1">
-                      <CalendarCheck size={13} className="text-gray-400" /> Ընդհանուր արված դասեր
-                    </span>
-                    <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Պահպանված է նաև նախկին խմբերում դասավանդած դասերի քանակը">
-                      {instructor.total_lessons_taught ?? instructor.current_month_lessons ?? 0} դաս
-                    </span>
-                  </div>
-
                   <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-700">Ընդհանուր եկամուտ (ամսական)</span>
-                    <span className="text-base font-extrabold text-green-700">
-                      {(instructor.current_month_salary || 0).toLocaleString()} ֏
-                    </span>
+                    <div className="h-4 w-32 bg-gray-200 rounded" />
+                    <div className="h-5 w-24 bg-gray-200 rounded" />
                   </div>
                 </div>
               </div>
-
-              {/* Actions */}
               <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
-                <button 
-                  onClick={() => openEditModal(instructor)} 
-                  className="flex-1 py-1.5 px-3 bg-gray-50 hover:bg-brand/10 text-gray-700 hover:text-black border border-gray-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
-                >
-                  <Edit2 size={14} /> Խմբագրել
-                </button>
-                <button 
-                  onClick={() => handleDelete(instructor.id)} 
-                  className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" 
-                  title="Ջնջել"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <div className="flex-1 h-8 bg-gray-200 rounded-lg" />
+                <div className="w-8 h-8 bg-gray-200 rounded-lg" />
               </div>
             </div>
-          );
-        })}
+          ))
+        ) : (
+          filteredInstructors.map((instructor) => {
+            const specList = instructor.specialization 
+              ? instructor.specialization.split(',').map(s => s.trim()).filter(Boolean)
+              : [];
 
-        {filteredInstructors.length === 0 && (
+            return (
+              <div key={instructor.id} className="glass-panel p-6 flex flex-col justify-between hover:shadow-lg transition">
+                <div>
+                  {/* Header Info */}
+                  <div className="text-center mb-4">
+                    <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-brand/10 border-2 border-brand/30 flex items-center justify-center text-xl font-bold text-gray-800 shadow-sm">
+                      {instructor.first_name?.[0]}{instructor.last_name?.[0]}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-800 leading-tight">
+                      {instructor.first_name} {instructor.last_name}
+                    </h3>
+                    
+                    {/* Specializations Badges */}
+                    <div className="flex flex-wrap justify-center gap-1.5 mt-2.5 min-h-[26px]">
+                      {specList.length > 0 ? (
+                        specList.map((spec, sIdx) => (
+                          <span 
+                            key={sIdx} 
+                            className="bg-brand/15 text-gray-800 border border-brand/30 text-xs px-2.5 py-0.5 rounded-full font-medium"
+                          >
+                            {spec}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-gray-400 text-xs italic">Մասնագիտացումը նշված չէ</span>
+                      )}
+                    </div>
+                    
+                    <div className="inline-flex items-center gap-2 text-xs text-gray-600 mt-3 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+                      <Phone size={12} /> {instructor.phone}
+                    </div>
+                  </div>
+
+                  {/* Assigned Groups */}
+                  {instructor.assigned_groups && instructor.assigned_groups.length > 0 && (
+                    <div className="mb-4">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5">
+                        <Users2 size={13} /> Կցված խմբեր ({instructor.assigned_groups.length})
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {instructor.assigned_groups.map((groupName, gIdx) => (
+                          <span key={gIdx} className="bg-amber-50 text-amber-800 border border-amber-200/60 text-xs px-2 py-0.5 rounded-md font-medium">
+                            {groupName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Salary & Lessons Stats */}
+                  <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-2.5 my-4">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <Coins size={13} className="text-gray-400" /> 1 դասի վարձատրություն
+                      </span>
+                      <span className="font-bold text-gray-800">
+                        {(instructor.rate_per_lesson || 0).toLocaleString()} ֏
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <CalendarCheck size={13} className="text-gray-400" /> Արված դասեր ({selectedMonth === currentMonthStr ? 'այս ամիս' : selectedMonth})
+                      </span>
+                      {inlineEditId === instructor.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number"
+                            min="0"
+                            value={inlineEditLessons}
+                            onChange={(e) => setInlineEditLessons(e.target.value)}
+                            className="w-16 px-1.5 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveInstructorLessons(instructor.id)}
+                            className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                            title="Պահպանել"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setInlineEditId(null)}
+                            className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                            title="Չեղարկել"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                            {instructor.current_month_lessons || 0} դաս
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInlineEditId(instructor.id);
+                              setInlineEditLessons(instructor.current_month_lessons || 0);
+                            }}
+                            className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                            title="Խմբագրել դասախոսի դասերի քանակը"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 flex items-center gap-1">
+                        <CalendarCheck size={13} className="text-gray-400" /> Ընդհանուր արված դասեր
+                      </span>
+                      <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Պահպանված է նաև նախկին խմբերում դասավանդած դասերի քանակը">
+                        {instructor.total_lessons_taught ?? instructor.current_month_lessons ?? 0} դաս
+                      </span>
+                    </div>
+
+                    <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-700">Ընդհանուր եկամուտ (ամսական)</span>
+                      <span className="text-base font-extrabold text-green-700">
+                        {(instructor.current_month_salary || 0).toLocaleString()} ֏
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
+                  <button 
+                    onClick={() => openEditModal(instructor)} 
+                    className="flex-1 py-1.5 px-3 bg-gray-50 hover:bg-brand/10 text-gray-700 hover:text-black border border-gray-200 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition"
+                  >
+                    <Edit2 size={14} /> Խմբագրել
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(instructor.id)} 
+                    className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition" 
+                    title="Ջնջել"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {!loading && filteredInstructors.length === 0 && (
           <div className="col-span-full p-12 text-center text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">
             {instructors.length === 0 ? 'Դասախոսներ չեն գտնվել' : 'Ֆիլտրման պայմաններին համապատասխանող դասախոս չի գտնվել'}
           </div>

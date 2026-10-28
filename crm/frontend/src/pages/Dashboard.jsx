@@ -3,6 +3,7 @@ import api from '../api';
 import { Users, BookOpen, GraduationCap, DollarSign, Wallet, AlertCircle } from 'lucide-react';
 
 const Dashboard = () => {
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     total_students: 0,
     active_students: 0,
@@ -18,6 +19,7 @@ const Dashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
+        setLoading(true);
         const res = await api.get('/stats');
         setStats({
           total_students: res.data.total_students || 0,
@@ -32,6 +34,8 @@ const Dashboard = () => {
         });
       } catch (err) {
         console.error('Error fetching stats:', err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchStats();
@@ -99,12 +103,21 @@ const Dashboard = () => {
           },
         ].map((stat, idx) => (
           <div key={idx} className="glass-panel p-6 flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h3 className="text-gray-500 text-sm font-medium mb-1">{stat.title}</h3>
-              <p className={`text-2xl sm:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
-              {stat.sub && <p className="text-xs text-gray-400 mt-1">{stat.sub}</p>}
+              {loading ? (
+                <div className="space-y-2 mt-2">
+                  <div className="h-8 w-32 bg-gray-200/80 rounded-lg animate-pulse" />
+                  <div className="h-3.5 w-44 bg-gray-100 rounded animate-pulse" />
+                </div>
+              ) : (
+                <>
+                  <p className={`text-2xl sm:text-3xl font-bold ${stat.color}`}>{stat.value}</p>
+                  {stat.sub && <p className="text-xs text-gray-400 mt-1">{stat.sub}</p>}
+                </>
+              )}
             </div>
-            <div className={`p-3 rounded-xl ${stat.bg}`}>
+            <div className={`p-3 rounded-xl ${loading ? 'bg-gray-100 text-gray-300 animate-pulse' : stat.bg}`}>
               {stat.icon}
             </div>
           </div>
@@ -131,9 +144,31 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {trend.length === 0 ? (
+        {loading ? (
+          <div className="pt-6">
+            <div className="h-[280px] flex items-end justify-between gap-1.5 sm:gap-2 px-2 pb-2 border-b border-gray-200">
+              {Array.from({ length: 24 }).map((_, i) => {
+                const fakeHeight = 35 + ((i * 17) % 55);
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center h-full justify-end">
+                    <div className="w-4 h-2.5 bg-gray-100 rounded mb-1.5 animate-pulse" />
+                    <div
+                      style={{ height: `${fakeHeight}%` }}
+                      className="w-full max-w-[26px] rounded-t-md bg-gray-200/80 animate-pulse"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between gap-2 px-2 pt-3">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="h-2.5 w-8 bg-gray-100 rounded animate-pulse" />
+              ))}
+            </div>
+          </div>
+        ) : trend.length === 0 ? (
           <div className="text-gray-400 flex items-center justify-center h-[300px]">
-            Տվյալները բեռնվում են...
+            Տվյալներ առկա չեն
           </div>
         ) : (
           <div className="pt-6">

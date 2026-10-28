@@ -7,6 +7,7 @@ const Payments = () => {
   const { addToast } = useToast();
   const [payments, setPayments] = useState([]);
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState(null);
   const [formData, setFormData] = useState({
@@ -52,6 +53,7 @@ const Payments = () => {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [pRes, sRes] = await Promise.all([
         api.get('/payments'),
         api.get('/students?limit=1000')
@@ -60,6 +62,8 @@ const Payments = () => {
       setStudents(sRes.data.items || []);
     } catch (error) {
       console.error('Error fetching payments:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -288,16 +292,23 @@ const Payments = () => {
         </div>
 
         <div className="flex items-center gap-3 w-full lg:w-auto justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-gray-100">
-          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl">
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-4 py-2 rounded-xl min-w-[180px]">
             <Wallet size={18} className="text-emerald-600" />
-            <div>
-              <span className="text-[11px] text-emerald-700 block font-medium">
-                Ընդհանուր ({filteredPayments.length} վճարում)
-              </span>
-              <span className="text-base font-extrabold text-emerald-700">
-                {totalFilteredAmount.toLocaleString()} ֏
-              </span>
-            </div>
+            {loading ? (
+              <div className="space-y-1.5 py-0.5 flex-1">
+                <div className="h-3 w-24 bg-emerald-200/70 rounded animate-pulse" />
+                <div className="h-4 w-28 bg-emerald-200 rounded animate-pulse" />
+              </div>
+            ) : (
+              <div>
+                <span className="text-[11px] text-emerald-700 block font-medium">
+                  Ընդհանուր ({filteredPayments.length} վճարում)
+                </span>
+                <span className="text-base font-extrabold text-emerald-700">
+                  {totalFilteredAmount.toLocaleString()} ֏
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -317,42 +328,56 @@ const Payments = () => {
               </tr>
             </thead>
             <tbody>
-              {paginatedPayments.map((pay) => {
-                const st = students.find(s => s.id === pay.student_id);
-                return (
-                  <tr key={pay.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                    <td className="p-3.5 font-mono text-gray-400 whitespace-nowrap">#{pay.id}</td>
-                    <td className="p-3.5 font-semibold whitespace-nowrap">{st ? st.full_name : `Student ID: ${pay.student_id}`}</td>
-                    <td className="p-3.5 text-emerald-600 font-bold whitespace-nowrap">{pay.amount.toLocaleString()} ֏</td>
-                    <td className="p-3.5 whitespace-nowrap">
-                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">{pay.method}</span>
-                    </td>
-                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
-                    <td className="p-3.5 text-gray-500 text-sm whitespace-nowrap">{pay.notes || '-'}</td>
-                    <td className="p-3.5 text-right whitespace-nowrap">
-                      <div className="inline-flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(pay)}
-                          className="p-1.5 text-gray-500 hover:text-brand hover:bg-brand/10 rounded-lg transition"
-                          title="Խմբագրել վճարումը"
-                        >
-                          <Edit2 size={15} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(pay.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                          title="Ջնջել վճարումը"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
+              {loading ? (
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={idx} className="border-b border-gray-100 animate-pulse">
+                    <td className="p-3.5"><div className="h-4 w-10 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-36 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-6 w-28 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-44 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5 text-right"><div className="h-6 w-16 bg-gray-200 rounded ml-auto" /></td>
                   </tr>
-                );
-              })}
-              {filteredPayments.length === 0 && (
+                ))
+              ) : (
+                paginatedPayments.map((pay) => {
+                  const st = students.find(s => s.id === pay.student_id);
+                  return (
+                    <tr key={pay.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                      <td className="p-3.5 font-mono text-gray-400 whitespace-nowrap">#{pay.id}</td>
+                      <td className="p-3.5 font-semibold whitespace-nowrap">{st ? st.full_name : `Student ID: ${pay.student_id}`}</td>
+                      <td className="p-3.5 text-emerald-600 font-bold whitespace-nowrap">{pay.amount.toLocaleString()} ֏</td>
+                      <td className="p-3.5 whitespace-nowrap">
+                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm">{pay.method}</span>
+                      </td>
+                      <td className="p-3.5 text-gray-600 whitespace-nowrap">{new Date(pay.payment_date).toLocaleDateString('hy-AM')}</td>
+                      <td className="p-3.5 text-gray-500 text-sm whitespace-nowrap">{pay.notes || '-'}</td>
+                      <td className="p-3.5 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(pay)}
+                            className="p-1.5 text-gray-500 hover:text-brand hover:bg-brand/10 rounded-lg transition"
+                            title="Խմբագրել վճարումը"
+                          >
+                            <Edit2 size={15} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(pay.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Ջնջել վճարումը"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+              {!loading && filteredPayments.length === 0 && (
                 <tr><td colSpan="7" className="p-12 text-center text-gray-400">Վճարումներ չեն գտնվել</td></tr>
               )}
             </tbody>
@@ -362,21 +387,25 @@ const Payments = () => {
         {/* Pagination UI */}
         <div className="p-4 border-t border-gray-100 flex justify-between items-center text-gray-600 bg-gray-50">
           <div>
-            Ընդհանուր <span className="font-bold text-gray-800">{totalPayments.toLocaleString()}</span> վճարում
+            {loading ? (
+              <div className="h-5 w-36 bg-gray-200 rounded animate-pulse" />
+            ) : (
+              <>Ընդհանուր <span className="font-bold text-gray-800">{totalPayments.toLocaleString()}</span> վճարում</>
+            )}
           </div>
           <div className="flex gap-2">
             <button
-              disabled={currentPage === 1}
+              disabled={loading || currentPage === 1}
               onClick={() => setPage(Math.max(1, currentPage - 1))}
               className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
             >
               Նախորդ
             </button>
             <span className="px-4 py-2 text-gray-800 font-medium">
-              Էջ {currentPage} / {totalPages}
+              {loading ? '...' : `Էջ ${currentPage} / ${totalPages}`}
             </span>
             <button
-              disabled={currentPage >= totalPages}
+              disabled={loading || currentPage >= totalPages}
               onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
               className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
             >

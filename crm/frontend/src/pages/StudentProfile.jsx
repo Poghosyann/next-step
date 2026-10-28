@@ -108,7 +108,55 @@ const StudentProfile = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  if (!student) return <div className="p-8 text-gray-800">Բեռնվում է...</div>;
+  if (!student) {
+    return (
+      <div className="p-8 animate-pulse">
+        <div className="flex justify-between items-center mb-6">
+          <div className="h-5 w-36 bg-gray-200 rounded" />
+          <div className="flex gap-2">
+            <div className="h-9 w-28 bg-gray-200 rounded-md" />
+            <div className="h-9 w-24 bg-gray-200 rounded-md" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="col-span-1 space-y-6">
+            <div className="glass-panel p-6 space-y-4">
+              <div className="flex flex-col items-center pt-4">
+                <div className="h-7 w-48 bg-gray-200 rounded mb-2" />
+                <div className="h-4 w-36 bg-gray-200 rounded mb-3" />
+                <div className="flex gap-2">
+                  <div className="h-5 w-20 bg-gray-200 rounded-full" />
+                  <div className="h-5 w-20 bg-gray-200 rounded-full" />
+                </div>
+              </div>
+              <div className="space-y-4 border-t border-gray-100 pt-5">
+                <div className="h-10 bg-gray-100 rounded" />
+                <div className="h-10 bg-gray-100 rounded" />
+                <div className="h-36 bg-gray-100 rounded-xl" />
+              </div>
+            </div>
+            <div className="glass-panel p-6 space-y-3">
+              <div className="h-6 w-36 bg-gray-200 rounded" />
+              <div className="h-24 bg-gray-100 rounded-xl" />
+            </div>
+          </div>
+          <div className="col-span-2 space-y-6">
+            <div className="glass-panel p-6 space-y-4">
+              <div className="h-6 w-48 bg-gray-200 rounded" />
+              <div className="space-y-3">
+                <div className="h-16 bg-gray-100 rounded-lg" />
+                <div className="h-16 bg-gray-100 rounded-lg" />
+              </div>
+            </div>
+            <div className="glass-panel p-6 space-y-3">
+              <div className="h-5 w-40 bg-gray-200 rounded" />
+              <div className="h-24 bg-gray-100 rounded-lg" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">

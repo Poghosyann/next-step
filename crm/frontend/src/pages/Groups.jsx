@@ -9,6 +9,7 @@ const Groups = () => {
   const [courses, setCourses] = useState([]);
   const [instructors, setInstructors] = useState([]);
   const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [showModal, setShowModal] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState(null);
@@ -85,6 +86,7 @@ const Groups = () => {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [grRes, cRes, iRes, sRes] = await Promise.all([
         api.get('/groups'),
         api.get('/courses'),
@@ -97,6 +99,8 @@ const Groups = () => {
       setStudents(sRes.data.items || sRes.data);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -247,140 +251,160 @@ const Groups = () => {
               </tr>
             </thead>
             <tbody>
-              {groups.map((gr) => {
-                const prog = getGroupProgress(gr);
-                const isNotStarted = !prog.isStarted;
-
-                let barColorClass = 'bg-emerald-500';
-                if (prog.total > 0) {
-                  if (prog.remaining === 0 || prog.completed >= prog.total) {
-                    barColorClass = 'bg-red-500';
-                  } else if (prog.remaining >= 1 && prog.remaining <= 3) {
-                    barColorClass = 'bg-orange-500';
-                  } else {
-                    barColorClass = 'bg-emerald-500';
-                  }
-                } else {
-                  barColorClass = 'bg-gray-300';
-                }
-
-                return (
-                  <tr 
-                    key={gr.id} 
-                    className={`border-b transition ${
-                      isNotStarted 
-                        ? 'bg-purple-50/40 border-purple-100 hover:bg-purple-50/70 border-l-4 border-l-purple-500' 
-                        : 'border-gray-50 hover:bg-gray-50 border-l-4 border-l-transparent'
-                    }`}
-                  >
-                    <td className="p-3.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex flex-col gap-1 items-start">
-                        <div className="flex items-center gap-2">
-                          <Users2 size={16} className={isNotStarted ? "text-purple-600" : "text-brand"} />
-                          <div>
-                            <span className="font-bold text-gray-800">{gr.course?.title || 'Դասընթացը նշված չէ'}</span>
-                            {gr.course?.total_lessons > 0 && (
-                              <span className="text-[11px] text-gray-400 ml-1.5 font-normal">
-                                ({gr.course.total_lessons} դաս)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        {isNotStarted && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-full">
-                            <Clock size={11} /> Շուտով ({gr.start_date || 'Ամսաթիվը նշված չէ'})
-                          </span>
-                        )}
-                      </div>
+              {loading ? (
+                Array.from({ length: 6 }).map((_, idx) => (
+                  <tr key={idx} className="border-b border-gray-100 animate-pulse">
+                    <td className="p-3.5"><div className="h-4 w-44 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5">
+                      <div className="h-4 w-36 bg-gray-200 rounded mb-1.5" />
+                      <div className="h-3.5 w-24 bg-gray-100 rounded" />
                     </td>
-                    <td className="p-3.5 text-gray-600 whitespace-nowrap">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium text-gray-800">
-                          {gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : 'Նշված չէ'}
-                        </span>
-                        {gr.instructor_history_list && gr.instructor_history_list.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                            {gr.instructor_history_list.map((h, hIdx) => (
-                              <span
-                                key={h.id || hIdx}
-                                title={`${h.instructor_name} • Արված դասեր՝ ${h.lessons_taught} (${h.assigned_date || ''}${h.unassigned_date ? ` - ${h.unassigned_date}` : ' - ընթացիկ'})`}
-                                className={`text-[10px] px-1.5 py-0.2 rounded border cursor-help ${
-                                  h.is_current
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
-                                    : 'bg-gray-100 text-gray-500 border-gray-200'
-                                }`}
-                              >
-                                {h.is_current ? `Ընթացիկ՝ ${h.lessons_taught} դաս` : `Նախկին՝ ${h.instructor_name} (${h.lessons_taught} դաս)`}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                    <td className="p-3.5"><div className="h-4 w-28 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-4 w-24 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5">
+                      <div className="h-2.5 w-28 bg-gray-200 rounded-full mb-1.5" />
+                      <div className="h-4 w-16 bg-gray-100 rounded" />
                     </td>
-                    <td className="p-3.5 text-brand font-medium whitespace-nowrap">{gr.days}</td>
-                    <td className="p-3.5 text-gray-600 whitespace-nowrap">{gr.start_time} - {gr.end_time}</td>
-                    <td className="p-3.5 whitespace-nowrap">
-                      {isNotStarted ? (
-                        <div 
-                          className="flex items-center gap-2 cursor-help" 
-                          title={`Դեռ չի մեկնարկել (Մեկնարկը՝ ${gr.start_date || 'Չի նշված'}, Ընդհանուր՝ ${prog.total} դաս)`}
-                        >
-                          <div className="w-28 h-2.5 bg-gray-100 rounded-full border border-dashed border-purple-300 overflow-hidden" />
-                          <span className="text-xs text-purple-600 font-semibold whitespace-nowrap">
-                            Շուտով
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-1.5 items-start">
-                          <div 
-                            className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5 cursor-help" 
-                            title={`Արված դասեր՝ ${prog.completed}, Մնացել է՝ ${prog.remaining} (Ընդհանուր՝ ${prog.total} դաս)`}
-                          >
-                            <div 
-                              className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
-                              style={{ width: `${Math.max(0, Math.min(100, prog.percent))}%` }}
-                            />
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => handleConductLesson(gr.id)}
-                              className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[11px] font-bold flex items-center gap-0.5 transition"
-                              title="Գրանցել արված դաս (+1)"
-                            >
-                              <Plus size={11} /> Դաս
-                            </button>
-                            {prog.completed > 0 && (
-                              <button
-                                onClick={() => handleRevertLesson(gr.id)}
-                                className="px-1.5 py-0.5 bg-gray-50 hover:bg-gray-100 text-gray-500 border border-gray-200 rounded text-[11px] font-semibold transition"
-                                title="Չեղարկել արված դաս (-1)"
-                              >
-                                -1
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3.5 whitespace-nowrap">
-                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
-                        {gr.students?.length || 0} Ուսանող
-                      </span>
-                    </td>
-                    <td className="p-3.5 text-right whitespace-nowrap">
-                      <div className="flex justify-end gap-2">
-                        <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition" title="Խմբագրել">
-                          <Edit2 size={16} />
-                        </button>
-                        <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition" title="Ջնջել">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+                    <td className="p-3.5"><div className="h-6 w-20 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5 text-right"><div className="h-7 w-16 bg-gray-200 rounded ml-auto" /></td>
                   </tr>
-                );
-              })}
-              {groups.length === 0 && (
+                ))
+              ) : (
+                groups.map((gr) => {
+                  const prog = getGroupProgress(gr);
+                  const isNotStarted = !prog.isStarted;
+
+                  let barColorClass = 'bg-emerald-500';
+                  if (prog.total > 0) {
+                    if (prog.remaining === 0 || prog.completed >= prog.total) {
+                      barColorClass = 'bg-red-500';
+                    } else if (prog.remaining >= 1 && prog.remaining <= 3) {
+                      barColorClass = 'bg-orange-500';
+                    } else {
+                      barColorClass = 'bg-emerald-500';
+                    }
+                  } else {
+                    barColorClass = 'bg-gray-300';
+                  }
+
+                  return (
+                    <tr 
+                      key={gr.id} 
+                      className={`border-b transition ${
+                        isNotStarted 
+                          ? 'bg-purple-50/40 border-purple-100 hover:bg-purple-50/70 border-l-4 border-l-purple-500' 
+                          : 'border-gray-50 hover:bg-gray-50 border-l-4 border-l-transparent'
+                      }`}
+                    >
+                      <td className="p-3.5 text-gray-600 whitespace-nowrap">
+                        <div className="flex flex-col gap-1 items-start">
+                          <div className="flex items-center gap-2">
+                            <Users2 size={16} className={isNotStarted ? "text-purple-600" : "text-brand"} />
+                            <div>
+                              <span className="font-bold text-gray-800">{gr.course?.title || 'Դասընթացը նշված չէ'}</span>
+                              {gr.course?.total_lessons > 0 && (
+                                <span className="text-[11px] text-gray-400 ml-1.5 font-normal">
+                                  ({gr.course.total_lessons} դաս)
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {isNotStarted && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-purple-700 bg-purple-100 border border-purple-200 px-2 py-0.5 rounded-full">
+                              <Clock size={11} /> Շուտով ({gr.start_date || 'Ամսաթիվը նշված չէ'})
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-gray-600 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-gray-800">
+                            {gr.instructor ? `${gr.instructor.first_name} ${gr.instructor.last_name}` : 'Նշված չէ'}
+                          </span>
+                          {gr.instructor_history_list && gr.instructor_history_list.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                              {gr.instructor_history_list.map((h, hIdx) => (
+                                <span
+                                  key={h.id || hIdx}
+                                  title={`${h.instructor_name} • Արված դասեր՝ ${h.lessons_taught} (${h.assigned_date || ''}${h.unassigned_date ? ` - ${h.unassigned_date}` : ' - ընթացիկ'})`}
+                                  className={`text-[10px] px-1.5 py-0.2 rounded border cursor-help ${
+                                    h.is_current
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold'
+                                      : 'bg-gray-100 text-gray-500 border-gray-200'
+                                  }`}
+                                >
+                                  {h.is_current ? `Ընթացիկ՝ ${h.lessons_taught} դաս` : `Նախկին՝ ${h.instructor_name} (${h.lessons_taught} դաս)`}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-brand font-medium whitespace-nowrap">{gr.days}</td>
+                      <td className="p-3.5 text-gray-600 whitespace-nowrap">{gr.start_time} - {gr.end_time}</td>
+                      <td className="p-3.5 whitespace-nowrap">
+                        {isNotStarted ? (
+                          <div 
+                            className="flex items-center gap-2 cursor-help" 
+                            title={`Դեռ չի մեկնարկել (Մեկնարկը՝ ${gr.start_date || 'Չի նշված'}, Ընդհանուր՝ ${prog.total} դաս)`}
+                          >
+                            <div className="w-28 h-2.5 bg-gray-100 rounded-full border border-dashed border-purple-300 overflow-hidden" />
+                            <span className="text-xs text-purple-600 font-semibold whitespace-nowrap">
+                              Շուտով
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col gap-1.5 items-start">
+                            <div 
+                              className="w-28 bg-gray-100 h-2.5 rounded-full overflow-hidden border border-gray-200/70 p-0.5 cursor-help" 
+                              title={`Արված դասեր՝ ${prog.completed}, Մնացել է՝ ${prog.remaining} (Ընդհանուր՝ ${prog.total} դաս)`}
+                            >
+                              <div 
+                                className={`h-full rounded-full transition-all duration-500 ${barColorClass}`}
+                                style={{ width: `${Math.max(0, Math.min(100, prog.percent))}%` }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => handleConductLesson(gr.id)}
+                                className="px-2 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded text-[11px] font-bold flex items-center gap-0.5 transition"
+                                title="Գրանցել արված դաս (+1)"
+                              >
+                                <Plus size={11} /> Դաս
+                              </button>
+                              {prog.completed > 0 && (
+                                <button
+                                  onClick={() => handleRevertLesson(gr.id)}
+                                  className="px-1.5 py-0.5 bg-gray-50 hover:bg-gray-100 text-gray-500 border border-gray-200 rounded text-[11px] font-semibold transition"
+                                  title="Չեղարկել արված դաս (-1)"
+                                >
+                                  -1
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3.5 whitespace-nowrap">
+                        <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-sm border border-gray-200">
+                          {gr.students?.length || 0} Ուսանող
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right whitespace-nowrap">
+                        <div className="flex justify-end gap-2">
+                          <button onClick={() => openEditModal(gr)} className="p-2 text-gray-400 hover:text-brand hover:bg-brand/10 rounded-md transition" title="Խմբագրել">
+                            <Edit2 size={16} />
+                          </button>
+                          <button onClick={() => handleDelete(gr.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition" title="Ջնջել">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+              {!loading && groups.length === 0 && (
                 <tr><td colSpan="7" className="p-12 text-center text-gray-400">Խմբեր չեն գտնվել</td></tr>
               )}
             </tbody>
