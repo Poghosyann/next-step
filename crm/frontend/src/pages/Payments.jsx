@@ -16,10 +16,12 @@ const Payments = () => {
     notes: ''
   });
 
-  // Table Filters
+  // Table Filters & Pagination
   const [tableSearch, setTableSearch] = useState('');
   const [filterMethod, setFilterMethod] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
+  const [page, setPage] = useState(1);
+  const limit = 20;
 
   // Modal Student Dropdown
   const [studentSearch, setStudentSearch] = useState('');
@@ -169,6 +171,10 @@ const Payments = () => {
     return true;
   });
 
+  const totalPayments = filteredPayments.length;
+  const totalPages = Math.ceil(totalPayments / limit) || 1;
+  const currentPage = Math.min(page, totalPages);
+  const paginatedPayments = filteredPayments.slice((currentPage - 1) * limit, currentPage * limit);
   const totalFilteredAmount = filteredPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
   const exportToCSV = () => {
@@ -233,7 +239,7 @@ const Payments = () => {
               type="text"
               placeholder="Որոնել ըստ ուսանողի անվան, հեռախոսի կամ նշումի..."
               value={tableSearch}
-              onChange={(e) => setTableSearch(e.target.value)}
+              onChange={(e) => { setTableSearch(e.target.value); setPage(1); }}
               className="glass-input w-full pl-9 py-2 text-sm"
             />
           </div>
@@ -242,7 +248,7 @@ const Payments = () => {
             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
             <select
               value={filterMethod}
-              onChange={(e) => setFilterMethod(e.target.value)}
+              onChange={(e) => { setFilterMethod(e.target.value); setPage(1); }}
               className="glass-input pl-9 py-2 text-sm appearance-none w-full sm:w-48"
             >
               <option value="">Բոլոր եղանակները</option>
@@ -259,7 +265,7 @@ const Payments = () => {
               <input
                 type="month"
                 value={filterMonth}
-                onChange={(e) => setFilterMonth(e.target.value)}
+                onChange={(e) => { setFilterMonth(e.target.value); setPage(1); }}
                 className="glass-input pl-9 py-2 text-sm w-full sm:w-44"
                 title="Ֆիլտրել ըստ ամսվա"
               />
@@ -271,6 +277,7 @@ const Payments = () => {
                   setTableSearch('');
                   setFilterMethod('');
                   setFilterMonth('');
+                  setPage(1);
                 }}
                 className="text-xs font-semibold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg transition whitespace-nowrap"
               >
@@ -310,7 +317,7 @@ const Payments = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredPayments.map((pay) => {
+              {paginatedPayments.map((pay) => {
                 const st = students.find(s => s.id === pay.student_id);
                 return (
                   <tr key={pay.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
@@ -350,6 +357,32 @@ const Payments = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Pagination UI */}
+        <div className="p-4 border-t border-gray-100 flex justify-between items-center text-gray-600 bg-gray-50">
+          <div>
+            Ընդհանուր <span className="font-bold text-gray-800">{totalPayments.toLocaleString()}</span> վճարում
+          </div>
+          <div className="flex gap-2">
+            <button
+              disabled={currentPage === 1}
+              onClick={() => setPage(Math.max(1, currentPage - 1))}
+              className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
+            >
+              Նախորդ
+            </button>
+            <span className="px-4 py-2 text-gray-800 font-medium">
+              Էջ {currentPage} / {totalPages}
+            </span>
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+              className="px-4 py-2 border border-gray-200 rounded-md hover:bg-white disabled:opacity-50 transition"
+            >
+              Հաջորդ
+            </button>
+          </div>
         </div>
       </div>
 

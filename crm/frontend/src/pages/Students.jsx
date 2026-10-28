@@ -19,7 +19,7 @@ const Students = () => {
   const [groupsList, setGroupsList] = useState([]);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [editingLessonsVal, setEditingLessonsVal] = useState(0);
-  const limit = 50;
+  const limit = 20;
 
   const defaultDirections = [
     'Ֆինանսական հաշվառում',
