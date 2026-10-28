@@ -54,6 +54,9 @@ class Instructor(Base):
     phone = Column(String)
     specialization = Column(String)
     rate_per_lesson = Column(Integer, default=0)
+    status = Column(String, default="Ակտիվ")
+    is_deleted = Column(Integer, default=0)
+    deleted_at = Column(DateTime, nullable=True)
 
     groups = relationship("Group", back_populates="instructor")
 
@@ -76,6 +79,8 @@ class Student(Base):
     comment = Column(String)
     urgent_notes = Column(String)
     custom_lessons_attended = Column(Integer, nullable=True)
+    is_deleted = Column(Integer, default=0)
+    deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     groups = relationship("Group", secondary=group_student_table, back_populates="students")
@@ -96,6 +101,9 @@ class Group(Base):
     notes = Column(String)
     conducted_lessons = Column(Integer, default=0)
     last_lesson_date = Column(String, nullable=True)
+    status = Column(String, default="Ակտիվ")
+    is_deleted = Column(Integer, default=0)
+    deleted_at = Column(DateTime, nullable=True)
 
     course = relationship("Course", back_populates="groups")
     instructor = relationship("Instructor", back_populates="groups")

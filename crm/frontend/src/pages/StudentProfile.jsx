@@ -402,6 +402,7 @@ const StudentProfile = () => {
                       <option>Ընթացիկ</option>
                       <option>Անորոշ</option>
                       <option>Արխիվ</option>
+                      <option>Ջնջված</option>
                     </select>
                   </div>
                 </div>

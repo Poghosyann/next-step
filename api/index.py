@@ -21,11 +21,19 @@ def init_db_if_needed():
                 import sqlalchemy
                 ddl_statements = [
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS rate_per_lesson INTEGER DEFAULT 0;",
+                    "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ակտիվ';",
+                    "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
+                    "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE courses ADD COLUMN IF NOT EXISTS total_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS conducted_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS last_lesson_date VARCHAR;",
+                    "ALTER TABLE groups ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ակտիվ';",
+                    "ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
+                    "ALTER TABLE groups ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS course_format VARCHAR DEFAULT 'Օֆլայն';",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS custom_lessons_attended INTEGER;",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS initial_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;",
                     "ALTER TABLE group_lessons ADD COLUMN IF NOT EXISTS instructor_id INTEGER;",
@@ -115,11 +123,18 @@ def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db)):
 
 @app.get("/api/stats")
 def get_stats(db: Session = Depends(get_db)):
-    from sqlalchemy import func
-    students_count = db.query(models.Student).count()
+    from sqlalchemy import func, or_
+    active_student_filter = [
+        or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
+        or_(models.Student.status == None, ~models.Student.status.ilike("%ջնջված%"))
+    ]
+    students_count = db.query(models.Student).filter(*active_student_filter).count()
     courses_count = db.query(models.Course).count()
-    instructors_count = db.query(models.Instructor).count()
-    monthly_revenue = db.query(func.sum(models.Student.monthly_fee)).scalar() or 0
+    instructors_count = db.query(models.Instructor).filter(
+        or_(models.Instructor.is_deleted == 0, models.Instructor.is_deleted == None),
+        or_(models.Instructor.status == None, models.Instructor.status != "Ջնջված")
+    ).count()
+    monthly_revenue = db.query(func.sum(models.Student.monthly_fee)).filter(*active_student_filter).scalar() or 0
     daily_trend = crud.get_monthly_student_trend(db, days_count=30)
     
     return {
@@ -135,7 +150,11 @@ def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)
     """Endpoint for landing page and CRM to create students"""
     db_student = crud.get_student_by_email(db, email=student.email)
     if db_student:
-        raise HTTPException(status_code=400, detail="Email already registered")
+        if getattr(db_student, 'is_deleted', 0) or (db_student.status and "ջնջված" in db_student.status.lower()):
+            db_student.email = f"{db_student.email} (ջնջված #{db_student.id})"
+            db.commit()
+        else:
+            raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_student(db=db, student=student)
 
 from typing import Optional
@@ -238,8 +257,8 @@ def create_instructor(instructor: schemas.InstructorCreate, db: Session = Depend
     return crud.create_instructor(db=db, instructor=instructor)
 
 @app.get("/api/instructors", response_model=list[schemas.Instructor])
-def read_instructors(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_instructors(db, skip=skip, limit=limit)
+def read_instructors(skip: int = 0, limit: int = 100, include_deleted: bool = False, db: Session = Depends(get_db)):
+    return crud.get_instructors(db, skip=skip, limit=limit, include_deleted=include_deleted)
 
 @app.put("/api/instructors/{instructor_id}", response_model=schemas.Instructor)
 def update_instructor(instructor_id: int, instructor: schemas.InstructorUpdate, db: Session = Depends(get_db)):
@@ -260,8 +279,8 @@ def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db)):
     return crud.create_group(db=db, group=group)
 
 @app.get("/api/groups", response_model=list[schemas.Group])
-def read_groups(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_groups(db, skip=skip, limit=limit)
+def read_groups(skip: int = 0, limit: int = 100, include_deleted: bool = False, db: Session = Depends(get_db)):
+    return crud.get_groups(db, skip=skip, limit=limit, include_deleted=include_deleted)
 
 @app.put("/api/groups/{group_id}", response_model=schemas.Group)
 def update_group(group_id: int, group: schemas.GroupUpdate, db: Session = Depends(get_db)):

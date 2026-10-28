@@ -17,6 +17,9 @@ export const getStatusBadgeStyle = (status) => {
   if (s.includes('արխիվ') || s.includes('ավարտ')) {
     return 'bg-gray-100 text-gray-500 border-gray-200';
   }
+  if (s.includes('ջնջված')) {
+    return 'bg-red-50 text-red-700 border-red-200';
+  }
   return 'bg-gray-100 text-gray-700 border-gray-200';
 };
 

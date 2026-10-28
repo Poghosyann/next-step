@@ -51,6 +51,9 @@ class InstructorUpdate(BaseModel):
 
 class Instructor(InstructorBase):
     id: int
+    status: Optional[str] = "Ակտիվ"
+    is_deleted: Optional[int] = 0
+    deleted_at: Optional[datetime] = None
     current_month_lessons: Optional[int] = 0
     current_month_salary: Optional[int] = 0
     total_lessons_taught: Optional[int] = 0
@@ -113,6 +116,8 @@ class StudentGroupOffsetUpdate(BaseModel):
 
 class Student(StudentBase):
     id: int
+    is_deleted: Optional[int] = 0
+    deleted_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
     payments: List['Payment'] = []
     total_paid: Optional[int] = 0
@@ -190,9 +195,13 @@ class GroupUpdate(BaseModel):
     notes: Optional[str] = None
     conducted_lessons: Optional[int] = None
     last_lesson_date: Optional[str] = None
+    status: Optional[str] = None
 
 class Group(GroupBase):
     id: int
+    status: Optional[str] = "Ակտիվ"
+    is_deleted: Optional[int] = 0
+    deleted_at: Optional[datetime] = None
     course: Optional[Course] = None
     instructor: Optional[Instructor] = None
     students: List[Student] = []
