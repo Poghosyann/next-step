@@ -21,6 +21,7 @@ def init_db_if_needed():
                 import sqlalchemy
                 ddl_statements = [
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS rate_per_lesson INTEGER DEFAULT 0;",
+                    "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS custom_month_lessons INTEGER;",
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'Ակտիվ';",
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
                     "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
@@ -267,6 +268,18 @@ def update_instructor(instructor_id: int, instructor: schemas.InstructorUpdate, 
         raise HTTPException(status_code=404, detail="Instructor not found")
     return updated
 
+@app.put("/api/instructors/{instructor_id}/lessons", response_model=schemas.Instructor)
+def update_instructor_lessons_endpoint(
+    instructor_id: int,
+    payload: schemas.StudentGroupOffsetUpdate,
+    db: Session = Depends(get_db)
+):
+    target = payload.attended_lessons if payload.attended_lessons is not None else (payload.initial_lessons or 0)
+    updated = crud.update_instructor_lessons(db, instructor_id, target)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Instructor not found")
+    return updated
+
 @app.delete("/api/instructors/{instructor_id}")
 def delete_instructor(instructor_id: int, db: Session = Depends(get_db)):
     deleted = crud.delete_instructor(db, instructor_id)
@@ -324,4 +337,13 @@ def read_debts(
     db: Session = Depends(get_db)
 ):
     return crud.get_debtors(db, course_direction=course_direction, search=search)
+
+@app.get("/api/lesson-edit-history", response_model=list[schemas.LessonEditHistoryItem])
+def read_lesson_edit_history(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[int] = None,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    return crud.get_lesson_edit_history(db, entity_type=entity_type, entity_id=entity_id, limit=limit)
 

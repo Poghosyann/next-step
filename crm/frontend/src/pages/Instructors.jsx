@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
-import { X, Plus, Trash2, Edit2, Phone, CalendarCheck, Coins, Users2, Search, BookOpen } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Phone, CalendarCheck, Coins, Users2, Search, BookOpen, Check } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Instructors = () => {
@@ -12,6 +12,8 @@ const Instructors = () => {
   const [selectedSpecializations, setSelectedSpecializations] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
+  const [inlineEditId, setInlineEditId] = useState(null);
+  const [inlineEditLessons, setInlineEditLessons] = useState(0);
 
   const initialForm = {
     first_name: '',
@@ -99,6 +101,20 @@ const Instructors = () => {
     } catch (err) {
       console.error(err);
       addToast('Սխալ դասախոսին պահպանելիս', 'error');
+    }
+  };
+
+  const handleSaveInstructorLessons = async (instructorId) => {
+    try {
+      const res = await api.put(`/instructors/${instructorId}/lessons`, {
+        attended_lessons: parseInt(inlineEditLessons, 10) || 0
+      });
+      setInstructors(prev => prev.map(inst => inst.id === instructorId ? res.data : inst));
+      setInlineEditId(null);
+      addToast('Դասախոսի դասերի քանակը թարմացվեց և գրանցվեց պատմության մեջ', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ դասախոսի դասերի քանակը թարմացնելիս', 'error');
     }
   };
 
@@ -256,9 +272,51 @@ const Instructors = () => {
                     <span className="text-gray-500 flex items-center gap-1">
                       <CalendarCheck size={13} className="text-gray-400" /> Արված դասեր (ամսվա 1-ից)
                     </span>
-                    <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                      {instructor.current_month_lessons || 0} դաս
-                    </span>
+                    {inlineEditId === instructor.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min="0"
+                          value={inlineEditLessons}
+                          onChange={(e) => setInlineEditLessons(e.target.value)}
+                          className="w-16 px-1.5 py-0.5 text-xs border border-brand rounded bg-white text-center font-bold focus:outline-none"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveInstructorLessons(instructor.id)}
+                          className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                          title="Պահպանել"
+                        >
+                          <Check size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setInlineEditId(null)}
+                          className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                          title="Չեղարկել"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                          {instructor.current_month_lessons || 0} դաս
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInlineEditId(instructor.id);
+                            setInlineEditLessons(instructor.current_month_lessons || 0);
+                          }}
+                          className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                          title="Խմբագրել դասախոսի դասերի քանակը"
+                        >
+                          <Edit2 size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-between items-center text-xs">
@@ -440,6 +498,36 @@ const Instructors = () => {
                   Արված դասերի և աշխատավարձի հաշվարկն ավտոմատ կերպով կատարվում է ըստ կցված խմբերի գրաֆիկի:
                 </p>
               </div>
+
+              {editingInstructorId && (() => {
+                const editingInst = instructors.find(i => i.id === editingInstructorId);
+                const editHist = editingInst?.lesson_edit_history || [];
+                if (editHist.length === 0) return null;
+                return (
+                  <div className="pt-3 border-t border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                      Դասերի Խմբագրման Պատմություն
+                    </p>
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {editHist.map((item, idx) => (
+                        <div key={item.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                          <div>
+                            <span className="font-semibold text-gray-700">{item.note || 'Դասերի քանակի խմբագրում'}</span>
+                            {item.created_at && (
+                              <span className="block text-[10px] text-gray-400">
+                                {new Date(item.created_at).toLocaleString('hy-AM')}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-bold text-brand bg-white px-2 py-0.5 rounded border border-gray-200 whitespace-nowrap">
+                            {item.old_lessons} ➔ {item.new_lessons} դաս
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Modal footer */}
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">

@@ -54,6 +54,7 @@ class Instructor(Base):
     phone = Column(String)
     specialization = Column(String)
     rate_per_lesson = Column(Integer, default=0)
+    custom_month_lessons = Column(Integer, nullable=True)
     status = Column(String, default="Ակտիվ")
     is_deleted = Column(Integer, default=0)
     deleted_at = Column(DateTime, nullable=True)
@@ -136,6 +137,18 @@ class GroupInstructorHistory(Base):
     lessons_taught = Column(Integer, default=0)
 
     group = relationship("Group", back_populates="instructor_history")
+
+class LessonEditHistory(Base):
+    __tablename__ = "lesson_edit_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String, index=True) # "student", "group", "instructor"
+    entity_id = Column(Integer, index=True)
+    entity_name = Column(String)
+    old_lessons = Column(Integer, default=0)
+    new_lessons = Column(Integer, default=0)
+    note = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Payment(Base):
     __tablename__ = "payments"

@@ -480,6 +480,36 @@ const Groups = () => {
                     </div>
                   );
                 })()}
+
+                {editingGroupId && (() => {
+                  const editingGrp = groups.find(g => g.id === editingGroupId);
+                  const editHist = editingGrp?.lesson_edit_history || [];
+                  if (editHist.length === 0) return null;
+                  return (
+                    <div className="pt-3 border-t border-gray-100">
+                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                        Խմբի Դասերի Խմբագրման Պատմություն
+                      </p>
+                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                        {editHist.map((item, idx) => (
+                          <div key={item.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                            <div>
+                              <span className="font-semibold text-gray-700">{item.note || 'Դասերի քանակի խմբագրում'}</span>
+                              {item.created_at && (
+                                <span className="block text-[10px] text-gray-400">
+                                  {new Date(item.created_at).toLocaleString('hy-AM')}
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-bold text-brand bg-white px-2 py-0.5 rounded border border-gray-200 whitespace-nowrap">
+                              {item.old_lessons} ➔ {item.new_lessons} դաս
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm" ref={studentDropdownRef}>

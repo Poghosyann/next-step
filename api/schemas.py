@@ -29,6 +29,18 @@ class Course(CourseBase):
     class Config:
         orm_mode = True
 
+class LessonEditHistoryItem(BaseModel):
+    id: Optional[int] = None
+    entity_type: str
+    entity_id: int
+    entity_name: Optional[str] = None
+    old_lessons: int = 0
+    new_lessons: int = 0
+    note: Optional[str] = None
+    created_at: Optional[datetime] = None
+    class Config:
+        orm_mode = True
+
 # =================
 # Instructor Schemas
 # =================
@@ -38,6 +50,7 @@ class InstructorBase(BaseModel):
     phone: str
     specialization: Optional[str] = None
     rate_per_lesson: Optional[int] = 0
+    custom_month_lessons: Optional[int] = None
 
 class InstructorCreate(InstructorBase):
     pass
@@ -48,6 +61,7 @@ class InstructorUpdate(BaseModel):
     phone: Optional[str] = None
     specialization: Optional[str] = None
     rate_per_lesson: Optional[int] = None
+    custom_month_lessons: Optional[int] = None
 
 class Instructor(InstructorBase):
     id: int
@@ -58,6 +72,7 @@ class Instructor(InstructorBase):
     current_month_salary: Optional[int] = 0
     total_lessons_taught: Optional[int] = 0
     assigned_groups: Optional[List[str]] = []
+    lesson_edit_history: Optional[List[LessonEditHistoryItem]] = []
     class Config:
         orm_mode = True
 
@@ -127,6 +142,7 @@ class Student(StudentBase):
     balance: Optional[int] = 0
     group_names: Optional[List[str]] = []
     student_groups: Optional[List[StudentGroupDetail]] = []
+    lesson_edit_history: Optional[List[LessonEditHistoryItem]] = []
     class Config:
         orm_mode = True
 
@@ -210,6 +226,7 @@ class Group(GroupBase):
     progress_percent: Optional[int] = 0
     is_started: Optional[bool] = False
     instructor_history_list: Optional[List[GroupInstructorHistoryItem]] = []
+    lesson_edit_history: Optional[List[LessonEditHistoryItem]] = []
     class Config:
         orm_mode = True
 

@@ -325,6 +325,31 @@ const StudentProfile = () => {
                 Ուսանողը դեռևս որևէ խմբում ներառված չէ
               </p>
             )}
+
+            {student.lesson_edit_history && student.lesson_edit_history.length > 0 && (
+              <div className="mt-5 pt-4 border-t border-gray-100">
+                <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5">
+                  Դասերի Խմբագրման Պատմություն
+                </p>
+                <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                  {student.lesson_edit_history.map((item, idx) => (
+                    <div key={item.id || idx} className="text-xs bg-gray-50 border border-gray-200/70 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="font-semibold text-gray-700">{item.note || 'Դասերի քանակի խմբագրում'}</span>
+                        {item.created_at && (
+                          <span className="block text-[10px] text-gray-400">
+                            {new Date(item.created_at).toLocaleString('hy-AM')}
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-bold text-brand whitespace-nowrap bg-white px-2 py-0.5 rounded border border-gray-200">
+                        {item.old_lessons} ➔ {item.new_lessons} դաս
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -402,7 +427,6 @@ const StudentProfile = () => {
                       <option>Ընթացիկ</option>
                       <option>Անորոշ</option>
                       <option>Արխիվ</option>
-                      <option>Ջնջված</option>
                     </select>
                   </div>
                 </div>
