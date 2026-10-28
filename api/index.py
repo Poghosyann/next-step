@@ -72,11 +72,14 @@ def init_db_if_needed():
             try:
                 if not crud.get_admin(db, "admin"):
                     crud.create_admin(db, "admin", "admin123")
-                # Normalize legacy student statuses
+                # Normalize legacy student statuses without touching "Անորոշ"
                 try:
                     db.query(models.Student).filter(models.Student.status.ilike("%ընթացիկ%")).update({models.Student.status: "Ընթացիկ"}, synchronize_session=False)
                     db.query(models.Student).filter(models.Student.status.ilike("%ավարտ%")).update({models.Student.status: "Արխիվ"}, synchronize_session=False)
-                    db.query(models.Student).filter(models.Student.status.ilike("%նոր%")).update({models.Student.status: "Նոր"}, synchronize_session=False)
+                    db.query(models.Student).filter(
+                        models.Student.status.ilike("%նոր%"),
+                        ~models.Student.status.ilike("%անորոշ%")
+                    ).update({models.Student.status: "Նոր"}, synchronize_session=False)
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)
@@ -423,4 +426,10 @@ def read_lesson_edit_history(
     db: Session = Depends(get_db)
 ):
     return crud.get_lesson_edit_history(db, entity_type=entity_type, entity_id=entity_id, limit=limit)
+
+@app.post("/api/reset-demo-data")
+def reset_demo_data_endpoint():
+    seed.seed(force_reset=True)
+    return {"ok": True, "message": "Demo data reset and seeded successfully"}
+
 
