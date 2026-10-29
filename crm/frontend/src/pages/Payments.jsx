@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { Plus, X, Search, User, Edit2, Trash2, Download, Filter, Calendar, Wallet } from 'lucide-react';
+import { Plus, Search, User, Edit2, Trash2, Download, Filter, Calendar, Wallet, ArrowLeft } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Payments = () => {
@@ -213,6 +213,157 @@ const Payments = () => {
     addToast('Excel (CSV) ֆայլը հաջողությամբ ներբեռնվեց', 'success');
   };
 
+  if (showModal) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setShowModal(false)}
+            className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition shadow-sm"
+            title="Վերադառնալ"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {editingPaymentId ? 'Խմբագրել Վճարումը' : 'Նոր Վճարում'}
+            </h1>
+            <p className="text-sm text-gray-500">
+              Գրանցեք կամ խմբագրեք ուսանողի վճարումը
+            </p>
+          </div>
+        </div>
+
+        <div className="glass-panel bg-white p-8">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div ref={dropdownRef} className="relative">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Ուսանող *</label>
+              
+              {selectedStudent ? (
+                <div className="flex items-center justify-between p-3 bg-brand/10 border border-brand/30 rounded-lg">
+                  <div className="flex items-center gap-2">
+                    <User size={18} className="text-brand" />
+                    <div>
+                      <p className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                        <span>{selectedStudent.full_name}</span>
+                        {selectedStudent.balance !== undefined && (
+                          <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${selectedStudent.balance > 0 ? 'text-emerald-700 bg-emerald-100' : 'text-red-600 bg-red-100'}`}>
+                            Բալանս՝ {selectedStudent.balance > 0 ? `+${selectedStudent.balance.toLocaleString()} ֏` : `${selectedStudent.balance.toLocaleString()} ֏`}
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {selectedStudent.phone || 'Հեռախոս չկա'} {selectedStudent.course_direction ? `• ${selectedStudent.course_direction}` : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData({ ...formData, student_id: '' });
+                      setStudentSearch('');
+                      setIsDropdownOpen(true);
+                    }}
+                    className="text-xs font-semibold text-gray-500 hover:text-black underline px-2 py-1"
+                  >
+                    Փոխել
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <div className="relative flex items-center">
+                    <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="Որոնել ուսանողի (անուն, հեռախոս, էլ-փոստ)..."
+                      value={studentSearch}
+                      onFocus={() => setIsDropdownOpen(true)}
+                      onChange={(e) => {
+                        setStudentSearch(e.target.value);
+                        setIsDropdownOpen(true);
+                      }}
+                      className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
+                    />
+                  </div>
+
+                  {isDropdownOpen && (
+                    <div className="absolute z-20 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl divide-y divide-gray-100">
+                      {filteredStudents.length === 0 ? (
+                        <div className="p-4 text-center text-sm text-gray-400">Ուսանող չի գտնվել</div>
+                      ) : (
+                        filteredStudents.map(st => (
+                          <div
+                            key={st.id}
+                            onClick={() => {
+                              setFormData({ 
+                                ...formData, 
+                                student_id: st.id,
+                                amount: formData.amount || (st.balance < 0 ? Math.abs(st.balance) : st.monthly_fee) || ''
+                              });
+                              setIsDropdownOpen(false);
+                            }}
+                            className="p-3 hover:bg-brand/10 cursor-pointer transition flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-semibold text-gray-800 text-sm">{st.full_name}</p>
+                              <p className="text-xs text-gray-500">
+                                {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {st.balance !== undefined && (
+                                <span className={`text-xs px-2 py-0.5 rounded font-bold ${st.balance > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
+                                  {st.balance > 0 ? `+${st.balance.toLocaleString()} ֏` : `${st.balance.toLocaleString()} ֏`}
+                                </span>
+                              )}
+                              <span className="text-xs text-brand font-bold bg-brand/10 px-2 py-1 rounded">
+                                Ընտրել
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Գումար (ՀՀ Դրամ)</label>
+              <input required name="amount" value={formData.amount} onChange={handleChange} type="number" min="0" className="glass-input w-full" placeholder="Օր.՝ 95000" />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Վճարման Եղանակ</label>
+              <select name="method" value={formData.method} onChange={handleChange} className="glass-input w-full">
+                <option>Կանխիկ</option>
+                <option>Բանկային Փոխանցում</option>
+                <option>Առցանց Փոխանցում</option>
+                <option>Idram / Telcell</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Նշումներ</label>
+              <textarea name="notes" value={formData.notes} onChange={handleChange} rows="3" className="glass-input w-full resize-none" placeholder="Լրացուցիչ տեղեկություն..."></textarea>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
+              <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition">
+                Չեղարկել
+              </button>
+              <button type="submit" className="glass-button px-8 py-2.5">
+                {editingPaymentId ? 'Թարմացնել' : 'Պահպանել'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
@@ -411,148 +562,8 @@ const Payments = () => {
             >
               Հաջորդ
             </button>
-          </div>
         </div>
       </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100">
-              <h2 className="text-xl font-bold text-gray-800">
-                {editingPaymentId ? 'Խմբագրել Վճարումը' : 'Նոր Վճարում'}
-              </h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-black">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div ref={dropdownRef} className="relative">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Ուսանող *</label>
-                
-                {selectedStudent ? (
-                  <div className="flex items-center justify-between p-3 bg-brand/10 border border-brand/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <User size={18} className="text-brand" />
-                      <div>
-                        <p className="font-bold text-gray-800 text-sm flex items-center gap-2">
-                          <span>{selectedStudent.full_name}</span>
-                          {selectedStudent.balance !== undefined && (
-                            <span className={`text-[11px] px-1.5 py-0.5 rounded font-bold ${selectedStudent.balance > 0 ? 'text-emerald-700 bg-emerald-100' : 'text-red-600 bg-red-100'}`}>
-                              Բալանս՝ {selectedStudent.balance > 0 ? `+${selectedStudent.balance.toLocaleString()} ֏` : `${selectedStudent.balance.toLocaleString()} ֏`}
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {selectedStudent.phone || 'Հեռախոս չկա'} {selectedStudent.course_direction ? `• ${selectedStudent.course_direction}` : ''}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormData({ ...formData, student_id: '' });
-                        setStudentSearch('');
-                        setIsDropdownOpen(true);
-                      }}
-                      className="text-xs font-semibold text-gray-500 hover:text-black underline px-2 py-1"
-                    >
-                      Փոխել
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <div className="relative flex items-center">
-                      <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
-                      <input
-                        type="text"
-                        placeholder="Որոնել ուսանողի (անուն, հեռախոս, էլ-փոստ)..."
-                        value={studentSearch}
-                        onFocus={() => setIsDropdownOpen(true)}
-                        onChange={(e) => {
-                          setStudentSearch(e.target.value);
-                          setIsDropdownOpen(true);
-                        }}
-                        className="glass-input w-full pl-9 pr-4 py-2.5 text-sm"
-                      />
-                    </div>
-
-                    {isDropdownOpen && (
-                      <div className="absolute z-20 left-0 right-0 mt-1 max-h-56 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl divide-y divide-gray-100">
-                        {filteredStudents.length === 0 ? (
-                          <div className="p-4 text-center text-sm text-gray-400">Ուսանող չի գտնվել</div>
-                        ) : (
-                          filteredStudents.map(st => (
-                            <div
-                              key={st.id}
-                              onClick={() => {
-                                setFormData({ 
-                                  ...formData, 
-                                  student_id: st.id,
-                                  amount: formData.amount || (st.balance < 0 ? Math.abs(st.balance) : st.monthly_fee) || ''
-                                });
-                                setIsDropdownOpen(false);
-                              }}
-                              className="p-3 hover:bg-brand/10 cursor-pointer transition flex items-center justify-between"
-                            >
-                              <div>
-                                <p className="font-semibold text-gray-800 text-sm">{st.full_name}</p>
-                                <p className="text-xs text-gray-500">
-                                  {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''}
-                                </p>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {st.balance !== undefined && (
-                                  <span className={`text-xs px-2 py-0.5 rounded font-bold ${st.balance > 0 ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
-                                    {st.balance > 0 ? `+${st.balance.toLocaleString()} ֏` : `${st.balance.toLocaleString()} ֏`}
-                                  </span>
-                                )}
-                                <span className="text-xs text-brand font-bold bg-brand/10 px-2 py-1 rounded">
-                                  Ընտրել
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Գումար (ՀՀ Դրամ)</label>
-                <input required name="amount" value={formData.amount} onChange={handleChange} type="number" min="0" className="glass-input w-full" placeholder="Օր.՝ 95000" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Վճարման Եղանակ</label>
-                <select name="method" value={formData.method} onChange={handleChange} className="glass-input w-full">
-                  <option>Կանխիկ</option>
-                  <option>Բանկային Փոխանցում</option>
-                  <option>Առցանց Փոխանցում</option>
-                  <option>Idram / Telcell</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Նշումներ</label>
-                <textarea name="notes" value={formData.notes} onChange={handleChange} rows="2" className="glass-input w-full resize-none" placeholder="Լրացուցիչ տեղեկություն..."></textarea>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-6">
-                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition">
-                  Չեղարկել
-                </button>
-                <button type="submit" className="glass-button px-8">
-                  {editingPaymentId ? 'Թարմացնել' : 'Պահպանել'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

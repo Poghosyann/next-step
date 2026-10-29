@@ -10,37 +10,15 @@ const StudentProfile = () => {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [student, setStudent] = useState(null);
-  const [coursesList, setCoursesList] = useState([]);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [formData, setFormData] = useState({});
   const [editingOffsetGroupId, setEditingOffsetGroupId] = useState(null);
   const [offsetValue, setOffsetValue] = useState(0);
   const [editingTotalLessons, setEditingTotalLessons] = useState(false);
   const [totalLessonsValue, setTotalLessonsValue] = useState(0);
 
-  const defaultDirections = [
-    'Ֆինանսական հաշվառում',
-    'Հարկային հաշվառում',
-    '1C ՀԾ ծրագրեր',
-    'Գլխավոր հաշվապահի դասընթաց',
-    'Excel'
-  ];
-
-  const allDirections = Array.from(new Set([
-    ...defaultDirections,
-    ...coursesList.map(c => c.title),
-    ...(student?.course_direction ? [student.course_direction] : [])
-  ])).filter(Boolean);
-
-  useEffect(() => {
-    api.get('/courses').then(res => setCoursesList(res.data || [])).catch(console.error);
-  }, []);
-
   const fetchStudent = useCallback(async () => {
     try {
       const response = await api.get(`/students/${id}`);
       setStudent(response.data);
-      setFormData(response.data);
     } catch (error) {
       console.error('Error fetching student details:', error);
     }
@@ -60,24 +38,6 @@ const StudentProfile = () => {
         console.error(err);
         addToast('Սխալ ջնջելիս', 'error');
       }
-    }
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...formData,
-        monthly_fee: formData.monthly_fee === '' ? 0 : Number(formData.monthly_fee) || 0,
-        gift_card: formData.gift_card === '' ? 0 : Number(formData.gift_card) || 0
-      };
-      await api.put(`/students/${id}`, payload);
-      setShowEditModal(false);
-      fetchStudent();
-      addToast('Տվյալները հաջողությամբ թարմացվեցին', 'success');
-    } catch (err) {
-      console.error(err);
-      addToast('Սխալ տվյալները թարմացնելիս', 'error');
     }
   };
 
@@ -107,10 +67,6 @@ const StudentProfile = () => {
       console.error(err);
       addToast('Սխալ դասերի քանակը թարմացնելիս', 'error');
     }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   if (!student) {
@@ -170,7 +126,7 @@ const StudentProfile = () => {
           <ArrowLeft size={18} /> Վերադառնալ ցանկ
         </Link>
         <div className="flex gap-2">
-          <button onClick={() => setShowEditModal(true)} className="glass-button flex items-center gap-2 !py-2 !px-4">
+          <button onClick={() => navigate(`/students/${id}/edit`)} className="glass-button flex items-center gap-2 !py-2 !px-4">
             <Edit2 size={16} /> Խմբագրել
           </button>
           <button onClick={handleDelete} className="bg-red-500 text-white hover:bg-red-600 transition px-4 py-2 rounded-md flex items-center gap-2 font-medium">
@@ -338,7 +294,7 @@ const StudentProfile = () => {
               </div>
               <button
                 type="button"
-                onClick={() => setShowEditModal(true)}
+                onClick={() => navigate(`/students/${id}/edit`)}
                 className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
               >
                 <Edit2 size={12} /> Խմբագրել
@@ -516,129 +472,6 @@ const StudentProfile = () => {
           )}
         </div>
       </div>
-
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden my-8">
-            <div className="flex justify-between items-center p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
-              <h2 className="text-xl font-bold text-gray-800">Խմբագրել Ուսանողի Տվյալները</h2>
-              <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-black">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEditSubmit} className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                <div className="space-y-4">
-                  <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-200 pb-1">Անձնական</h3>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Անուն Ազգանուն</label>
-                    <input type="text" name="full_name" value={formData.full_name || ''} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Հեռախոսահամար</label>
-                    <input type="text" name="phone" value={formData.phone || ''} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Էլ. Հասցե</label>
-                    <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Սոց․ հարթակի հղում</label>
-                    <input type="text" name="social_link" value={formData.social_link || ''} onChange={handleChange} className="glass-input w-full" placeholder="https://instagram.com/..." />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
-                    <select name="status" value={formData.status || ''} onChange={handleChange} className="glass-input w-full">
-                      <option>Նոր</option>
-                      <option>Հաստատված</option>
-                      <option>Ընթացիկ</option>
-                      <option>Անորոշ</option>
-                      <option>Արխիվ</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-200 pb-1">Ուսումնական & Ֆինանսական</h3>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Ուղղություն</label>
-                    <select name="course_direction" value={formData.course_direction || ''} onChange={handleChange} className="glass-input w-full">
-                      {allDirections.map((dir, idx) => (
-                        <option key={idx} value={dir}>{dir}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Ձևաչափ</label>
-                    <select name="course_format" value={formData.course_format || 'Օֆլայն'} onChange={handleChange} className="glass-input w-full">
-                      <option value="Օֆլայն">🏢 Օֆլայն (Դասասենյակում)</option>
-                      <option value="Օնլայն">🌐 Օնլայն (Հեռավար)</option>
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">Նախընտրած գրաֆիկ</label>
-                      <input type="text" name="preferred_schedule" value={formData.preferred_schedule || ''} onChange={handleChange} className="glass-input w-full" placeholder="Երկ, Չոր, Ուրբ" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">Նախընտրած ժամ</label>
-                      <input type="text" name="preferred_time" value={formData.preferred_time || ''} onChange={handleChange} className="glass-input w-full" placeholder="18:30 - 20:30" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար (֏)</label>
-                      <input type="number" min="0" name="monthly_fee" value={formData.monthly_fee ?? 0} onChange={handleChange} className="glass-input w-full" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">Նվեր քարտ (֏)</label>
-                      <input type="number" min="0" name="gift_card" value={formData.gift_card ?? 0} onChange={handleChange} className="glass-input w-full" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-4 border-t border-gray-200">
-                <div>
-                  <label className="block text-sm font-bold text-amber-600 mb-1 flex items-center gap-1">
-                    <Flame size={14} /> Հրատապ նշում (տեսանելի ցանկում)
-                  </label>
-                  <input
-                    type="text"
-                    name="urgent_notes"
-                    value={formData.urgent_notes || ''}
-                    onChange={handleChange}
-                    className="glass-input w-full border-amber-300 focus:border-amber-500"
-                    placeholder="Օր.՝ Follow Up tomorrow"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1">Նշումներ</label>
-                  <textarea
-                    name="comment"
-                    value={formData.comment || ''}
-                    onChange={handleChange}
-                    rows="2"
-                    className="glass-input w-full resize-y"
-                    placeholder="Նշումներ ուսանողի մասին..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-200">
-                <button type="button" onClick={() => setShowEditModal(false)} className="px-6 py-2.5 border border-gray-300 rounded-md text-gray-700 font-semibold hover:bg-gray-50 transition">
-                  Չեղարկել
-                </button>
-                <button type="submit" className="glass-button px-8">
-                  Պահպանել
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

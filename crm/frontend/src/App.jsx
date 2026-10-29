@@ -8,6 +8,7 @@ import Instructors from './pages/Instructors';
 import Groups from './pages/Groups';
 import Payments from './pages/Payments';
 import StudentProfile from './pages/StudentProfile';
+import StudentForm from './pages/StudentForm';
 import Debts from './pages/Debts';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
@@ -56,6 +57,8 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
+              <Route path="/students/new" element={<StudentForm />} />
+              <Route path="/students/:id/edit" element={<StudentForm />} />
               <Route path="/students/:id" element={<StudentProfile />} />
               <Route path="/debts" element={<Debts />} />
               <Route path="/courses" element={<Courses />} />

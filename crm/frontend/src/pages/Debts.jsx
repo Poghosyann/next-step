@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { AlertCircle, Search, DollarSign, Users, Eye, CheckCircle, X, CreditCard, RefreshCw, Edit2, Check } from 'lucide-react';
+import { AlertCircle, Search, DollarSign, Users, Eye, CheckCircle, X, CreditCard, RefreshCw, Edit2, Check, ArrowLeft } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Debts = () => {
@@ -113,6 +113,92 @@ const Debts = () => {
       setSubmittingPayment(false);
     }
   };
+
+  if (payingStudent) {
+    return (
+      <div className="p-8 max-w-2xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setPayingStudent(null)}
+            className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition shadow-sm"
+            title="Վերադառնալ"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">Մուտքագրել Վճարում</h1>
+            <p className="text-sm text-gray-500">
+              {payingStudent.full_name} ({payingStudent.course_direction || 'Առանց դասընթացի'})
+            </p>
+          </div>
+        </div>
+
+        <div className="glass-panel bg-white p-8">
+          <form onSubmit={handlePaymentSubmit} className="space-y-5">
+            <div className="bg-red-50 border border-red-100 rounded-lg p-3.5 text-sm flex justify-between items-center">
+              <span className="text-red-700 font-medium">Ընթացիկ պարտք:</span>
+              <span className="font-extrabold text-red-600 text-base">{payingStudent.balance?.toLocaleString()} ֏</span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Վճարվող Գումար (AMD) *</label>
+              <input
+                required
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="glass-input w-full font-bold text-lg text-emerald-700"
+                placeholder="36000"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Վճարման Եղանակ</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="glass-input w-full"
+              >
+                <option value="Կանխիկ">Կանխիկ</option>
+                <option value="Փոխանցում">Բանկային փոխանցում</option>
+                <option value="Քարտ">Քարտային վճարում (POS)</option>
+                <option value="Idram">Idram / Telcell</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Նշումներ</label>
+              <input
+                type="text"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+                className="glass-input w-full"
+                placeholder="Լրացուցիչ նշում..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => setPayingStudent(null)}
+                className="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition font-medium"
+              >
+                Չեղարկել
+              </button>
+              <button
+                type="submit"
+                disabled={submittingPayment}
+                className="glass-button px-8 py-2.5"
+              >
+                {submittingPayment ? 'Գրանցվում է...' : 'Հաստատել Վճարումը'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -340,87 +426,6 @@ const Debts = () => {
           </table>
         </div>
       </div>
-
-      {/* Quick Payment Modal */}
-      {payingStudent && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
-            <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800">Մուտքագրել Վճարում</h3>
-                <p className="text-xs text-gray-500">{payingStudent.full_name} ({payingStudent.course_direction})</p>
-              </div>
-              <button
-                onClick={() => setPayingStudent(null)}
-                className="text-gray-400 hover:text-gray-700 transition"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
-              <div className="bg-red-50 border border-red-100 rounded-lg p-3 text-sm flex justify-between items-center">
-                <span className="text-red-700 font-medium">Ընթացիկ պարտք:</span>
-                <span className="font-extrabold text-red-600">{payingStudent.balance?.toLocaleString()} ֏</span>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Վճարվող Գումար (AMD) *</label>
-                <input
-                  required
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  className="glass-input w-full font-bold text-lg text-emerald-700"
-                  placeholder="36000"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Վճարման Եղանակ</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="glass-input w-full"
-                >
-                  <option value="Կանխիկ">Կանխիկ</option>
-                  <option value="Փոխանցում">Բանկային փոխանցում</option>
-                  <option value="Քարտ">Քարտային վճարում (POS)</option>
-                  <option value="Idram">Idram / Telcell</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Նշումներ</label>
-                <input
-                  type="text"
-                  value={paymentNotes}
-                  onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="glass-input w-full"
-                  placeholder="Լրացուցիչ նշում..."
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setPayingStudent(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Չեղարկել
-                </button>
-                <button
-                  type="submit"
-                  disabled={submittingPayment}
-                  className="glass-button px-6"
-                >
-                  {submittingPayment ? 'Գրանցվում է...' : 'Հաստատել Վճարումը'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

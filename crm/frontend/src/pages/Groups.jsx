@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../api';
-import { X, Plus, Trash2, Edit2, Users2, Search, Clock } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, Users2, Search, Clock, ArrowLeft } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 const Groups = () => {
@@ -224,6 +224,278 @@ const Groups = () => {
     setShowModal(true);
   };
 
+  if (showModal) {
+    return (
+      <div className="p-8 max-w-5xl mx-auto">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            type="button"
+            onClick={() => setShowModal(false)}
+            className="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition shadow-sm"
+            title="Վերադառնալ"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-800">
+              {editingGroupId ? 'Խմբագրել Խումբը' : 'Նոր Խումբ'}
+            </h1>
+            <p className="text-sm text-gray-500">
+              Լրացրեք խմբի դասընթացը, դասախոսը, ուսանողների ցանկը և ժամանակացույցը
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց *</label>
+            <select required name="course_id" value={formData.course_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
+              <option value="">-- Ընտրեք Դասընթաց --</option>
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Դասախոս *</label>
+              <select required name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
+                <option value="">-- Ընտրեք Դասախոս --</option>
+                {instructors.map(inst => (
+                  <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
+                ))}
+              </select>
+              {editingGroupId && (
+                <p className="text-xs text-gray-400 mt-1.5">
+                  Դասախոսին փոխելիս նախկին դասախոսի արված դասերի քանակը պահպանվում է պատմության մեջ, իսկ նոր դասախոսի հաշվարկը սկսվում է 0-ից։
+                </p>
+              )}
+            </div>
+
+            {editingGroupId && (() => {
+              const editingGrp = groups.find(g => g.id === editingGroupId);
+              const histList = editingGrp?.instructor_history_list || [];
+              if (histList.length === 0) return null;
+              return (
+                <div className="pt-3 border-t border-gray-100">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Խմբի Դասախոսների Պատմություն
+                  </p>
+                  <div className="space-y-2">
+                    {histList.map((h, idx) => (
+                      <div
+                        key={h.id || idx}
+                        className={`flex items-center justify-between p-2.5 rounded-lg border text-xs ${
+                          h.is_current
+                            ? 'bg-emerald-50/60 border-emerald-200 text-gray-800'
+                            : 'bg-gray-50 border-gray-200 text-gray-600'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${h.is_current ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
+                          <span className="font-bold">{h.instructor_name}</span>
+                          <span className="text-gray-400">
+                            ({h.assigned_date || 'սկզբից'}{h.unassigned_date ? ` → ${h.unassigned_date}` : ' → ընթացիկ'})
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded font-bold ${
+                            h.is_current
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-gray-200 text-gray-700'
+                          }`}>
+                            Արված դասեր՝ {h.lessons_taught}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {editingGroupId && (() => {
+              const editingGrp = groups.find(g => g.id === editingGroupId);
+              const editHist = editingGrp?.lesson_edit_history || [];
+              if (editHist.length === 0) return null;
+              return (
+                <div className="pt-3 border-t border-gray-100">
+                  <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Խմբի Դասերի Խմբագրման Պատմություն
+                  </p>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {editHist.map((item, idx) => (
+                      <div key={item.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200 text-xs">
+                        <div>
+                          <span className="font-semibold text-gray-700">{item.note || 'Դասերի քանակի խմբագրում'}</span>
+                          {item.created_at && (
+                            <span className="block text-[10px] text-gray-400">
+                              {new Date(item.created_at).toLocaleString('hy-AM')}
+                            </span>
+                          )}
+                        </div>
+                        <span className="font-bold text-brand bg-white px-2 py-0.5 rounded border border-gray-200 whitespace-nowrap">
+                          {item.old_lessons} ➔ {item.new_lessons} դաս
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm" ref={studentDropdownRef}>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-bold text-gray-700">
+                Ուսանողներ <span className="text-gray-400 font-normal">({selectedStudents.length} ընտրված)</span>
+              </label>
+            </div>
+            
+            {/* Որոնման դաշտ */}
+            <div className="relative mb-3">
+              <div className="relative flex items-center">
+                <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
+                <input 
+                  type="text"
+                  placeholder="Որոնել ուսանողի (անուն, հեռախոս, էլ-փոստ)..."
+                  value={studentSearch}
+                  onFocus={() => setIsStudentDropdownOpen(true)}
+                  onChange={(e) => {
+                    setStudentSearch(e.target.value);
+                    setIsStudentDropdownOpen(true);
+                  }}
+                  className="glass-input w-full pl-9 pr-8 py-2 text-sm"
+                />
+                {studentSearch && (
+                  <button 
+                    type="button" 
+                    onClick={() => setStudentSearch('')} 
+                    className="absolute right-3 text-gray-400 hover:text-gray-600"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Բացվող ցանկ՝ որոնման արդյունքներով */}
+              {isStudentDropdownOpen && (
+                <div className="absolute z-20 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl divide-y divide-gray-100">
+                  <div className="p-2 text-xs font-semibold text-gray-400 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+                    <span>Գտնված ուսանողներ ({filteredAvailableStudents.length})</span>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsStudentDropdownOpen(false)}
+                      className="text-gray-500 hover:text-black font-medium"
+                    >
+                      Փակել ✕
+                    </button>
+                  </div>
+                  {filteredAvailableStudents.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-gray-400">
+                      {unselectedStudents.length === 0 
+                        ? 'Բոլոր ուսանողներն արդեն ավելացված են այս խմբում' 
+                        : 'Ուսանող չի գտնվել'}
+                    </div>
+                  ) : (
+                    filteredAvailableStudents.map(st => (
+                      <div 
+                        key={st.id} 
+                        onClick={() => addStudent(st)}
+                        className="p-3 hover:bg-brand/10 cursor-pointer transition flex items-center justify-between group"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-800 text-sm">{st.full_name}</p>
+                          <p className="text-xs text-gray-500">
+                            {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''} {st.status ? `• ${st.status}` : ''}
+                          </p>
+                        </div>
+                        <span className="text-xs bg-brand/10 group-hover:bg-brand group-hover:text-black font-semibold text-gray-700 px-2.5 py-1 rounded transition">
+                          + Ավելացնել
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Ընտրված ուսանողների ցանկ */}
+            <div className="flex flex-wrap gap-2 p-3 min-h-[70px] bg-gray-50 border border-gray-200 rounded-md">
+              {selectedStudents.length === 0 && (
+                <span className="text-gray-400 text-sm flex items-center">
+                  Խմբում դեռ ուսանողներ չկան: Օգտագործեք վերևի որոնումը՝ ուսանողներ ավելացնելու համար:
+                </span>
+              )}
+              {selectedStudents.map(st => (
+                <div key={st.id} className="flex items-center gap-2 bg-brand/10 border border-brand/30 text-gray-800 px-3 py-1.5 rounded-full text-sm font-medium">
+                  <span>{st.full_name}</span>
+                  {st.phone && <span className="text-xs text-gray-500 font-normal">({st.phone})</span>}
+                  <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1 text-gray-500" title="Հեռացնել խմբից">
+                    <X size={14} strokeWidth={3} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <label className="block text-sm font-bold text-gray-700 mb-4">Ժամանակացույց</label>
+            
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Սկզբի ամսաթիվ</label>
+                <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="glass-input w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Արված դասեր</label>
+                <input type="number" name="conducted_lessons" min="0" value={formData.conducted_lessons ?? 0} onChange={handleChange} className="glass-input w-full" placeholder="0" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Սկիզբ (Ժամ)</label>
+                <input type="time" name="start_time" value={formData.start_time} onChange={handleChange} className="glass-input w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Ավարտ (Ժամ)</label>
+                <input type="time" name="end_time" value={formData.end_time} onChange={handleChange} className="glass-input w-full" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-2">Օրեր</label>
+                <div className="flex flex-wrap gap-1">
+                  {allDays.map(day => {
+                    const isSelected = selectedDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleDay(day)}
+                        className={`px-2 py-1 rounded text-xs font-medium transition ${
+                          isSelected ? 'bg-brand text-black shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+            <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition">
+              Չեղարկել
+            </button>
+            <button type="submit" className="glass-button px-8 py-2.5">
+              Պահպանել
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
       <div className="flex justify-between items-center mb-8">
@@ -411,268 +683,6 @@ const Groups = () => {
           </table>
         </div>
       </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col my-8">
-            <div className="flex justify-between items-center p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
-              <h2 className="text-xl font-bold text-gray-800">{editingGroupId ? 'Խմբագրել Խումբը' : 'Նոր Խումբ'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-black transition">
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
-              
-              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Դասընթաց *</label>
-                <select required name="course_id" value={formData.course_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
-                  <option value="">-- Ընտրեք Դասընթաց --</option>
-                  {courses.map(c => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Դասախոս *</label>
-                  <select required name="instructor_id" value={formData.instructor_id} onChange={handleChange} className="glass-input w-full md:w-1/2">
-                    <option value="">-- Ընտրեք Դասախոս --</option>
-                    {instructors.map(inst => (
-                      <option key={inst.id} value={inst.id}>{inst.first_name} {inst.last_name}</option>
-                    ))}
-                  </select>
-                  {editingGroupId && (
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      Դասախոսին փոխելիս նախկին դասախոսի արված դասերի քանակը պահպանվում է պատմության մեջ, իսկ նոր դասախոսի հաշվարկը սկսվում է 0-ից։
-                    </p>
-                  )}
-                </div>
-
-                {editingGroupId && (() => {
-                  const editingGrp = groups.find(g => g.id === editingGroupId);
-                  const histList = editingGrp?.instructor_history_list || [];
-                  if (histList.length === 0) return null;
-                  return (
-                    <div className="pt-3 border-t border-gray-100">
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        Խմբի Դասախոսների Պատմություն
-                      </p>
-                      <div className="space-y-2">
-                        {histList.map((h, idx) => (
-                          <div
-                            key={h.id || idx}
-                            className={`flex items-center justify-between p-2.5 rounded-lg border text-xs ${
-                              h.is_current
-                                ? 'bg-emerald-50/60 border-emerald-200 text-gray-800'
-                                : 'bg-gray-50 border-gray-200 text-gray-600'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${h.is_current ? 'bg-emerald-500' : 'bg-gray-400'}`}></span>
-                              <span className="font-bold">{h.instructor_name}</span>
-                              <span className="text-gray-400">
-                                ({h.assigned_date || 'սկզբից'}{h.unassigned_date ? ` → ${h.unassigned_date}` : ' → ընթացիկ'})
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 rounded font-bold ${
-                                h.is_current
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-gray-200 text-gray-700'
-                              }`}>
-                                Արված դասեր՝ {h.lessons_taught}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {editingGroupId && (() => {
-                  const editingGrp = groups.find(g => g.id === editingGroupId);
-                  const editHist = editingGrp?.lesson_edit_history || [];
-                  if (editHist.length === 0) return null;
-                  return (
-                    <div className="pt-3 border-t border-gray-100">
-                      <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
-                        Խմբի Դասերի Խմբագրման Պատմություն
-                      </p>
-                      <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                        {editHist.map((item, idx) => (
-                          <div key={item.id || idx} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border border-gray-200 text-xs">
-                            <div>
-                              <span className="font-semibold text-gray-700">{item.note || 'Դասերի քանակի խմբագրում'}</span>
-                              {item.created_at && (
-                                <span className="block text-[10px] text-gray-400">
-                                  {new Date(item.created_at).toLocaleString('hy-AM')}
-                                </span>
-                              )}
-                            </div>
-                            <span className="font-bold text-brand bg-white px-2 py-0.5 rounded border border-gray-200 whitespace-nowrap">
-                              {item.old_lessons} ➔ {item.new_lessons} դաս
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm" ref={studentDropdownRef}>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-bold text-gray-700">
-                    Ուսանողներ <span className="text-gray-400 font-normal">({selectedStudents.length} ընտրված)</span>
-                  </label>
-                </div>
-                
-                {/* Որոնման դաշտ */}
-                <div className="relative mb-3">
-                  <div className="relative flex items-center">
-                    <Search className="absolute left-3 text-gray-400 w-4 h-4 pointer-events-none" />
-                    <input 
-                      type="text"
-                      placeholder="Որոնել ուսանողի (անուն, հեռախոս, էլ-փոստ)..."
-                      value={studentSearch}
-                      onFocus={() => setIsStudentDropdownOpen(true)}
-                      onChange={(e) => {
-                        setStudentSearch(e.target.value);
-                        setIsStudentDropdownOpen(true);
-                      }}
-                      className="glass-input w-full pl-9 pr-8 py-2 text-sm"
-                    />
-                    {studentSearch && (
-                      <button 
-                        type="button" 
-                        onClick={() => setStudentSearch('')} 
-                        className="absolute right-3 text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Բացվող ցանկ՝ որոնման արդյունքներով */}
-                  {isStudentDropdownOpen && (
-                    <div className="absolute z-20 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl divide-y divide-gray-100">
-                      <div className="p-2 text-xs font-semibold text-gray-400 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
-                        <span>Գտնված ուսանողներ ({filteredAvailableStudents.length})</span>
-                        <button 
-                          type="button" 
-                          onClick={() => setIsStudentDropdownOpen(false)}
-                          className="text-gray-500 hover:text-black font-medium"
-                        >
-                          Փակել ✕
-                        </button>
-                      </div>
-                      {filteredAvailableStudents.length === 0 ? (
-                        <div className="p-4 text-center text-sm text-gray-400">
-                          {unselectedStudents.length === 0 
-                            ? 'Բոլոր ուսանողներն արդեն ավելացված են այս խմբում' 
-                            : 'Ուսանող չի գտնվել'}
-                        </div>
-                      ) : (
-                        filteredAvailableStudents.map(st => (
-                          <div 
-                            key={st.id} 
-                            onClick={() => addStudent(st)}
-                            className="p-3 hover:bg-brand/10 cursor-pointer transition flex items-center justify-between group"
-                          >
-                            <div>
-                              <p className="font-medium text-gray-800 text-sm">{st.full_name}</p>
-                              <p className="text-xs text-gray-500">
-                                {st.phone || 'Հեռախոս չկա'} {st.course_direction ? `• ${st.course_direction}` : ''} {st.status ? `• ${st.status}` : ''}
-                              </p>
-                            </div>
-                            <span className="text-xs bg-brand/10 group-hover:bg-brand group-hover:text-black font-semibold text-gray-700 px-2.5 py-1 rounded transition">
-                              + Ավելացնել
-                            </span>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Ընտրված ուսանողների ցանկ */}
-                <div className="flex flex-wrap gap-2 p-3 min-h-[70px] bg-gray-50 border border-gray-200 rounded-md">
-                  {selectedStudents.length === 0 && (
-                    <span className="text-gray-400 text-sm flex items-center">
-                      Խմբում դեռ ուսանողներ չկան: Օգտագործեք վերևի որոնումը՝ ուսանողներ ավելացնելու համար:
-                    </span>
-                  )}
-                  {selectedStudents.map(st => (
-                    <div key={st.id} className="flex items-center gap-2 bg-brand/10 border border-brand/30 text-gray-800 px-3 py-1.5 rounded-full text-sm font-medium">
-                      <span>{st.full_name}</span>
-                      {st.phone && <span className="text-xs text-gray-500 font-normal">({st.phone})</span>}
-                      <button type="button" onClick={() => removeStudent(st.id)} className="hover:text-red-500 transition ml-1 text-gray-500" title="Հեռացնել խմբից">
-                        <X size={14} strokeWidth={3} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
-                <label className="block text-sm font-bold text-gray-700 mb-4">Ժամանակացույց</label>
-                
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2">Սկզբի ամսաթիվ</label>
-                    <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2">Արված դասեր</label>
-                    <input type="number" name="conducted_lessons" min="0" value={formData.conducted_lessons ?? 0} onChange={handleChange} className="glass-input w-full" placeholder="0" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2">Սկիզբ (Ժամ)</label>
-                    <input type="time" name="start_time" value={formData.start_time} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2">Ավարտ (Ժամ)</label>
-                    <input type="time" name="end_time" value={formData.end_time} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 mb-2">Օրեր</label>
-                    <div className="flex flex-wrap gap-1">
-                      {allDays.map(day => {
-                        const isSelected = selectedDays.includes(day);
-                        return (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => toggleDay(day)}
-                            className={`px-2 py-1 rounded text-xs font-medium transition ${
-                              isSelected ? 'bg-brand text-black shadow-sm' : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border border-gray-200'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2 bg-white border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition">
-                  Չեղարկել
-                </button>
-                <button type="submit" className="glass-button px-8">
-                  Պահպանել
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
