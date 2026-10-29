@@ -436,7 +436,7 @@ const Instructors = () => {
       </div>
 
       {/* Instructors Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
         {loading ? (
           Array.from({ length: 3 }).map((_, idx) => (
             <div key={idx} className="glass-panel p-6 flex flex-col justify-between animate-pulse">
@@ -450,21 +450,21 @@ const Instructors = () => {
                   </div>
                   <div className="h-6 w-32 bg-gray-100 rounded-full mx-auto mt-3" />
                 </div>
-                <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-3 my-4">
+                <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100 space-y-3 my-4">
                   <div className="flex justify-between items-center">
-                    <div className="h-3.5 w-28 bg-gray-200 rounded" />
-                    <div className="h-4 w-16 bg-gray-200 rounded" />
+                    <div className="h-3.5 w-36 bg-gray-200 rounded" />
+                    <div className="h-4 w-20 bg-gray-200 rounded" />
                   </div>
                   <div className="flex justify-between items-center">
-                    <div className="h-3.5 w-28 bg-gray-200 rounded" />
-                    <div className="h-5 w-14 bg-gray-200 rounded" />
+                    <div className="h-3.5 w-40 bg-gray-200 rounded" />
+                    <div className="h-5 w-16 bg-gray-200 rounded" />
                   </div>
                   <div className="flex justify-between items-center">
-                    <div className="h-3.5 w-28 bg-gray-200 rounded" />
-                    <div className="h-5 w-14 bg-gray-200 rounded" />
+                    <div className="h-3.5 w-36 bg-gray-200 rounded" />
+                    <div className="h-5 w-16 bg-gray-200 rounded" />
                   </div>
                   <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center">
-                    <div className="h-4 w-32 bg-gray-200 rounded" />
+                    <div className="h-4 w-44 bg-gray-200 rounded" />
                     <div className="h-5 w-24 bg-gray-200 rounded" />
                   </div>
                 </div>
@@ -489,7 +489,7 @@ const Instructors = () => {
                     <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-brand/10 border-2 border-brand/30 flex items-center justify-center text-xl font-bold text-gray-800 shadow-sm">
                       {instructor.first_name?.[0]}{instructor.last_name?.[0]}
                     </div>
-                    <h3 className="text-xl font-bold text-gray-800 leading-tight">
+                    <h3 className="text-xl font-bold text-gray-800 leading-tight whitespace-nowrap">
                       {instructor.first_name} {instructor.last_name}
                     </h3>
                     
@@ -499,7 +499,7 @@ const Instructors = () => {
                         specList.map((spec, sIdx) => (
                           <span 
                             key={sIdx} 
-                            className="bg-brand/15 text-gray-800 border border-brand/30 text-xs px-2.5 py-0.5 rounded-full font-medium"
+                            className="bg-brand/15 text-gray-800 border border-brand/30 text-xs px-2.5 py-0.5 rounded-full font-medium whitespace-nowrap"
                           >
                             {spec}
                           </span>
@@ -509,20 +509,20 @@ const Instructors = () => {
                       )}
                     </div>
                     
-                    <div className="inline-flex items-center gap-2 text-xs text-gray-600 mt-3 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
-                      <Phone size={12} /> {instructor.phone}
+                    <div className="inline-flex items-center gap-2 text-xs text-gray-600 mt-3 bg-gray-50 px-3 py-1 rounded-full border border-gray-100 whitespace-nowrap">
+                      <Phone size={12} className="shrink-0" /> {instructor.phone}
                     </div>
                   </div>
 
                   {/* Assigned Groups */}
                   {instructor.assigned_groups && instructor.assigned_groups.length > 0 && (
                     <div className="mb-4">
-                      <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5">
-                        <Users2 size={13} /> Կցված խմբեր ({instructor.assigned_groups.length})
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-1.5 whitespace-nowrap">
+                        <Users2 size={13} className="shrink-0" /> Կցված խմբեր ({instructor.assigned_groups.length})
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {instructor.assigned_groups.map((groupName, gIdx) => (
-                          <span key={gIdx} className="bg-amber-50 text-amber-800 border border-amber-200/60 text-xs px-2 py-0.5 rounded-md font-medium">
+                          <span key={gIdx} className="bg-amber-50 text-amber-800 border border-amber-200/60 text-xs px-2.5 py-0.5 rounded-md font-medium whitespace-nowrap">
                             {groupName}
                           </span>
                         ))}
@@ -531,22 +531,22 @@ const Instructors = () => {
                   )}
 
                   {/* Salary & Lessons Stats */}
-                  <div className="bg-gray-50/80 rounded-xl p-3.5 border border-gray-100 space-y-2.5 my-4">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 flex items-center gap-1">
-                        <Coins size={13} className="text-gray-400" /> 1 դասի վարձատրություն
+                  <div className="bg-gray-50/80 rounded-xl p-4 border border-gray-100 space-y-2.5 my-4">
+                    <div className="flex justify-between items-center gap-3 text-xs whitespace-nowrap">
+                      <span className="text-gray-500 flex items-center gap-1.5">
+                        <Coins size={13} className="text-gray-400 shrink-0" /> 1 դասի վարձատրություն
                       </span>
-                      <span className="font-bold text-gray-800">
+                      <span className="font-bold text-gray-800 shrink-0">
                         {(instructor.rate_per_lesson || 0).toLocaleString()} ֏
                       </span>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 flex items-center gap-1">
-                        <CalendarCheck size={13} className="text-gray-400" /> Արված դասեր ({selectedMonth === currentMonthStr ? 'այս ամիս' : selectedMonth})
+                    <div className="flex justify-between items-center gap-3 text-xs whitespace-nowrap">
+                      <span className="text-gray-500 flex items-center gap-1.5">
+                        <CalendarCheck size={13} className="text-gray-400 shrink-0" /> Արված դասեր ({selectedMonth === currentMonthStr ? 'այս ամիս' : selectedMonth})
                       </span>
                       {inlineEditId === instructor.id ? (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 shrink-0">
                           <input
                             type="number"
                             min="0"
@@ -573,8 +573,8 @@ const Instructors = () => {
                           </button>
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1">
-                          <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 whitespace-nowrap">
                             {instructor.current_month_lessons || 0} դաս
                           </span>
                           <button
@@ -592,18 +592,18 @@ const Instructors = () => {
                       )}
                     </div>
 
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 flex items-center gap-1">
-                        <CalendarCheck size={13} className="text-gray-400" /> Ընդհանուր արված դասեր
+                    <div className="flex justify-between items-center gap-3 text-xs whitespace-nowrap">
+                      <span className="text-gray-500 flex items-center gap-1.5">
+                        <CalendarCheck size={13} className="text-gray-400 shrink-0" /> Ընդհանուր արված դասեր
                       </span>
-                      <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200" title="Պահպանված է նաև նախկին խմբերում դասավանդած դասերի քանակը">
+                      <span className="font-bold text-gray-700 bg-gray-100 px-2 py-0.5 rounded border border-gray-200 shrink-0 whitespace-nowrap" title="Պահպանված է նաև նախկին խմբերում դասավանդած դասերի քանակը">
                         {instructor.total_lessons_taught ?? instructor.current_month_lessons ?? 0} դաս
                       </span>
                     </div>
 
-                    <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center">
+                    <div className="pt-2.5 border-t border-gray-200/60 flex justify-between items-center gap-3 whitespace-nowrap">
                       <span className="text-xs font-bold text-gray-700">Ընդհանուր եկամուտ (ամսական)</span>
-                      <span className="text-base font-extrabold text-green-700">
+                      <span className="text-base font-extrabold text-green-700 shrink-0">
                         {(instructor.current_month_salary || 0).toLocaleString()} ֏
                       </span>
                     </div>
