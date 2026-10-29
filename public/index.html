@@ -22,6 +22,7 @@
                     <li><a href="#hero">Գլխավոր</a></li>
                     <li><a href="#about">Դասընթաց</a></li>
                     <li><a href="#program">Ծրագիր</a></li>
+                    <li><a href="#gallery">Տեսադարան</a></li>
                     <li><a href="#instructor">Դասախոս</a></li>
                     <li><a href="#reviews">Կարծիքներ</a></li>
                     <li><a href="#faq">ՀՏՀ</a></li>
@@ -29,6 +30,9 @@
                 </ul>
             </nav>
             <div class="header-actions">
+                <button type="button" class="btn btn-callback btn-sm open-callback-modal">
+                    <i class="fa-solid fa-phone-volume"></i> Պատվիրել զանգ
+                </button>
                 <a href="#register" class="btn btn-primary btn-sm">Գրանցվել</a>
                 <button class="mobile-toggle"><i class="fa-solid fa-bars"></i></button>
             </div>
@@ -43,7 +47,7 @@
                 <p>Գործնական դասընթաց սկսնակների համար՝ իրական փաստաթղթերով, ՀԾ-ով, հարկային հաշվետվություններով։</p>
                 <div class="hero-buttons">
                     <a href="#register" class="btn btn-primary btn-glow">Գրանցվել դասընթացին</a>
-                    <a href="#contact" class="btn btn-secondary">Ստանալ անվճար խորհրդատվություն</a>
+                    <button type="button" class="btn btn-secondary open-callback-modal"><i class="fa-solid fa-phone-volume" style="margin-right: 8px;"></i>Պատվիրել զանգ</button>
                 </div>
             </div>
             <div class="hero-images">
@@ -69,6 +73,22 @@
         <div class="container">
             <h2 class="section-title text-center">Ինչու՞ ընտրել մեզ</h2>
             <div class="features-grid">
+                <div class="feature-card highlight-card">
+                    <div class="icon-box"><i class="fa-solid fa-money-bill-trend-up"></i></div>
+                    <h3>Եկամտային հարկի վերադարձի հնարավորություն</h3>
+                </div>
+                <div class="feature-card highlight-card">
+                    <div class="icon-box"><i class="fa-solid fa-award"></i></div>
+                    <h3>ԿԳՄՍ երաշխավորված</h3>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fa-solid fa-laptop-file"></i></div>
+                    <h3>Օնլայն, օֆֆլայն ուսուցում</h3>
+                </div>
+                <div class="feature-card">
+                    <div class="icon-box"><i class="fa-solid fa-credit-card"></i></div>
+                    <h3>Ապառիկ ուսուցում</h3>
+                </div>
                 <div class="feature-card">
                     <div class="icon-box"><i class="fa-solid fa-seedling"></i></div>
                     <h3>Զրոյից՝ սկսնակների համար</h3>
@@ -92,10 +112,6 @@
                 <div class="feature-card">
                     <div class="icon-box"><i class="fa-solid fa-handshake"></i></div>
                     <h3>Աշխատանքի տեղավորման աջակցություն</h3>
-                </div>
-                <div class="feature-card highlight-card">
-                    <div class="icon-box"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-                    <h3>Եկամտահարկի վերադարձի հնարավորություն</h3>
                 </div>
             </div>
         </div>
@@ -148,7 +164,7 @@
                     </div>
                     <div class="list-card">
                         <i class="fa-solid fa-check-circle text-primary"></i>
-                        <p>Կստանաք պետական նմուշի վկայական</p>
+                        <p>ԿԳՄՍ նախարարության կողմից երաշխավորված դասընթացի վկայական</p>
                     </div>
                     <div class="list-card">
                         <i class="fa-solid fa-check-circle text-primary"></i>
@@ -184,6 +200,95 @@
                 <div class="format-card wide-card">
                     <i class="fa-solid fa-clock"></i>
                     <h3>Առավոտյան, Ցերեկային և Երեկոյան խմբեր</h3>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Media Gallery Section (Տեսադարան) -->
+    <section id="gallery" class="gallery-section bg-light">
+        <div class="container">
+            <div class="gallery-header text-center">
+                <h2 class="section-title">Տեսադարան</h2>
+                <p class="gallery-subtitle">Դիտեք մեր դասապրոցեսի, միջոցառումների և վկայականների հանձնման լուսանկարներն ու տեսանյութերը</p>
+                <div class="gallery-tabs">
+                    <button type="button" class="gallery-tab active" data-filter="all">Բոլորը</button>
+                    <button type="button" class="gallery-tab" data-filter="video"><i class="fa-solid fa-play"></i> Վիդեոներ</button>
+                    <button type="button" class="gallery-tab" data-filter="photo"><i class="fa-solid fa-image"></i> Նկարներ</button>
+                </div>
+            </div>
+
+            <div class="gallery-grid" id="galleryGrid">
+                <!-- Video 1 -->
+                <div class="gallery-item" data-type="video" data-src="https://assets.mixkit.co/videos/preview/mixkit-business-people-working-in-an-office-43525-large.mp4" data-title="Գործնական դասընթաց ՀԾ Հաշվապահ ծրագրով">
+                    <div class="gallery-media">
+                        <img src="https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=700&h=500" alt="Գործնական դասընթաց">
+                        <span class="gallery-badge badge-video"><i class="fa-solid fa-video"></i> Վիդեո</span>
+                        <div class="gallery-overlay">
+                            <div class="gallery-action-icon"><i class="fa-solid fa-play"></i></div>
+                            <h4>Գործնական դասընթաց ՀԾ Հաշվապահ ծրագրով</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photo 1 -->
+                <div class="gallery-item" data-type="photo" data-src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=1200&h=800" data-title="Թիմային քննարկում և պրակտիկ աշխատանք">
+                    <div class="gallery-media">
+                        <img src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=700&h=500" alt="Թիմային քննարկում">
+                        <span class="gallery-badge badge-photo"><i class="fa-solid fa-camera"></i> Նկար</span>
+                        <div class="gallery-overlay">
+                            <div class="gallery-action-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+                            <h4>Թիմային քննարկում և պրակտիկ աշխատանք</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video 2 -->
+                <div class="gallery-item" data-type="video" data-src="https://assets.mixkit.co/videos/preview/mixkit-woman-working-on-her-laptop-in-a-modern-office-43527-large.mp4" data-title="Հարկային հաշվետվությունների լրացման պրակտիկա">
+                    <div class="gallery-media">
+                        <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=700&h=500" alt="Հարկային հաշվետվություններ">
+                        <span class="gallery-badge badge-video"><i class="fa-solid fa-video"></i> Վիդեո</span>
+                        <div class="gallery-overlay">
+                            <div class="gallery-action-icon"><i class="fa-solid fa-play"></i></div>
+                            <h4>Հարկային հաշվետվությունների լրացման պրակտիկա</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photo 2 -->
+                <div class="gallery-item" data-type="photo" data-src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=1200&h=800" data-title="Լսարանային դասընթաց փոքր խմբերով">
+                    <div class="gallery-media">
+                        <img src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=700&h=500" alt="Լսարանային դասընթաց">
+                        <span class="gallery-badge badge-photo"><i class="fa-solid fa-camera"></i> Նկար</span>
+                        <div class="gallery-overlay">
+                            <div class="gallery-action-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+                            <h4>Լսարանային դասընթաց փոքր խմբերով</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photo 3 -->
+                <div class="gallery-item" data-type="photo" data-src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=1200&h=800" data-title="ԿԳՄՍ երաշխավորված վկայականների հանձնում">
+                    <div class="gallery-media">
+                        <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=700&h=500" alt="Վկայականների հանձնում">
+                        <span class="gallery-badge badge-photo"><i class="fa-solid fa-camera"></i> Նկար</span>
+                        <div class="gallery-overlay">
+                            <div class="gallery-action-icon"><i class="fa-solid fa-magnifying-glass-plus"></i></div>
+                            <h4>ԿԳՄՍ երաշխավորված վկայականների հանձնում</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video 3 -->
+                <div class="gallery-item" data-type="video" data-src="https://assets.mixkit.co/videos/preview/mixkit-people-working-in-a-busy-office-43523-large.mp4" data-title="Շրջանավարտների տպավորությունները դասընթացից">
+                    <div class="gallery-media">
+                        <img src="https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&q=80&w=700&h=500" alt="Շրջանավարտների տպավորություններ">
+                        <span class="gallery-badge badge-video"><i class="fa-solid fa-video"></i> Վիդեո</span>
+                        <div class="gallery-overlay">
+                            <div class="gallery-action-icon"><i class="fa-solid fa-play"></i></div>
+                            <h4>Շրջանավարտների տպավորությունները դասընթացից</h4>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -301,7 +406,7 @@
                         <i class="fa-solid fa-chevron-down"></i>
                     </div>
                     <div class="accordion-body">
-                        <p>Այո, դասընթացը հաջողությամբ ավարտելուց հետո և ավարտական թեստը հանձնելուց հետո տրամադրվում է ավարտական վկայական (սերտիֆիկատ):</p>
+                        <p>Այո, դասընթացը հաջողությամբ ավարտելուց հետո և ավարտական թեստը հանձնելուց հետո տրամադրվում է ԿԳՄՍ նախարարության կողմից երաշխավորված դասընթացի վկայական:</p>
                     </div>
                 </div>
                 <div class="accordion-item">
@@ -351,7 +456,16 @@
                         <label for="phone">Հեռախոսահամար</label>
                         <input type="tel" id="phone" name="phone" placeholder="+374 __ __ __ __" required>
                     </div>
-                    <!-- Email field removed -->
+                    <div class="form-group">
+                        <label for="course_direction">Նախընտրելի դասընթաց</label>
+                        <select id="course_direction" name="course_direction" class="form-control" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-family: inherit; margin-top: 5px; background: white; font-size: 15px;">
+                            <option value="Ֆինանսական հաշվառում">Ֆինանսական հաշվառում</option>
+                            <option value="Հարկային հաշվառում">Հարկային հաշվառում</option>
+                            <option value="1C ՀԾ ծրագրեր">1C ՀԾ ծրագրեր</option>
+                            <option value="Գլխավոր հաշվապահի դասընթաց">Գլխավոր հաշվապահի դասընթաց</option>
+                            <option value="Excel">Excel դասընթաց</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label>Նախընտրելի ուսուցման ձևաչափ</label>
                         <div class="radio-group">
@@ -379,7 +493,11 @@
                         <div class="contact-icon"><i class="fa-solid fa-location-dot"></i></div>
                         <div>
                             <h4>Հասցե</h4>
-                            <p>Արմենակ Արմենակյան 125/3</p>
+                            <p>
+                                <a href="https://www.google.com/maps/search/?api=1&query=Արմենակ+Արմենակյան+125/3,+Երևան" target="_blank" rel="noopener noreferrer" class="address-link">
+                                    Արմենակ Արմենակյան 125/3 <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.85em; margin-left: 4px;"></i>
+                                </a>
+                            </p>
                         </div>
                     </div>
                     <div class="contact-item">
@@ -403,15 +521,53 @@
                         <a href="#" class="social-btn telegram"><i class="fa-brands fa-telegram"></i></a>
                     </div>
                 </div>
-
-                <div class="map-container">
-                    <!-- Placeholder map -->
-                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d195155.66986427672!2d44.37255140510565!3d40.153500508007255!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x406aa2dab8fc8b5b%3A0x3d1479ae87da526a!2sYerevan%2C%20Armenia!5e0!3m2!1sen!2s!4v1714000000000!5m2!1sen!2s" width="100%" height="250" style="border:0; border-radius: 16px;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
-                </div>
             </div>
 
         </div>
     </section>
+
+    <!-- Floating Call Request Button -->
+    <button type="button" class="floating-callback-btn open-callback-modal" title="Պատվիրել զանգ">
+        <i class="fa-solid fa-phone-volume"></i>
+        <span>Պատվիրել զանգ</span>
+    </button>
+
+    <!-- Callback Request Modal -->
+    <div id="callbackModal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <button type="button" class="custom-modal-close" id="closeCallbackModal">&times;</button>
+            <div class="custom-modal-header">
+                <div class="modal-icon-circle"><i class="fa-solid fa-phone-volume"></i></div>
+                <h3>Պատվիրել զանգ</h3>
+                <p>Թողեք Ձեր հեռախոսահամարը և մեր մասնագետը կզանգահարի Ձեզ</p>
+            </div>
+            <form id="callbackForm" class="reg-form">
+                <div class="form-group">
+                    <label for="cb_name">Անուն Ազգանուն</label>
+                    <input type="text" id="cb_name" placeholder="Ձեր անունը" required>
+                </div>
+                <div class="form-group">
+                    <label for="cb_phone">Հեռախոսահամար</label>
+                    <input type="tel" id="cb_phone" placeholder="+374 __ __ __ __" required>
+                </div>
+                <div class="form-group">
+                    <label for="cb_time">Նախընտրելի ժամ</label>
+                    <input type="text" id="cb_time" placeholder="Օր.՝ Այսօր 15:00-ից հետո">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block btn-glow">Պատվիրել զանգ</button>
+                <div class="form-message" id="callbackMessage" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Gallery Lightbox Modal -->
+    <div id="galleryLightbox" class="custom-modal-overlay lightbox-overlay">
+        <div class="lightbox-content">
+            <button type="button" class="custom-modal-close lightbox-close" id="closeLightbox">&times;</button>
+            <div id="lightboxMediaContainer"></div>
+            <h4 id="lightboxCaption" class="lightbox-caption"></h4>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer class="footer">

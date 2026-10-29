@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
-import { Plus, X, Search, Filter, Download, Edit2, Check } from 'lucide-react';
+import { Plus, X, Search, Filter, Download, Edit2, Check, Flame } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -18,6 +18,8 @@ const Students = () => {
   const [coursesList, setCoursesList] = useState([]);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [editingLessonsVal, setEditingLessonsVal] = useState(0);
+  const [editingUrgentId, setEditingUrgentId] = useState(null);
+  const [editingUrgentVal, setEditingUrgentVal] = useState('');
   const limit = 20;
 
   const defaultDirections = [
@@ -37,13 +39,26 @@ const Students = () => {
     api.get('/courses').then(res => setCoursesList(res.data || [])).catch(console.error);
   }, []);
 
+  const initialFormState = {
+    full_name: '',
+    course_direction: 'Ֆինանսական հաշվառում',
+    course_format: 'Օֆլայն',
+    location: '',
+    status: 'Նոր',
+    phone: '',
+    email: '',
+    social_link: '',
+    preferred_schedule: '',
+    preferred_time: '',
+    monthly_fee: 48000,
+    gift_card: 0,
+    source: 'Instagram',
+    comment: '',
+    urgent_notes: ''
+  };
+
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({
-    full_name: '', course_direction: 'Ֆինանսական հաշվառում', course_format: 'Օֆլայն', 
-    location: '', status: 'Նոր', phone: '', email: '', 
-    monthly_fee: 95000, discount_percent: 0, gift_card: 0, source: 'Instagram', 
-    comment: '', urgent_notes: ''
-  });
+  const [formData, setFormData] = useState(initialFormState);
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -85,8 +100,14 @@ const Students = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/students', formData);
+      const payload = {
+        ...formData,
+        monthly_fee: formData.monthly_fee === '' ? 0 : Number(formData.monthly_fee) || 0,
+        gift_card: formData.gift_card === '' ? 0 : Number(formData.gift_card) || 0
+      };
+      await api.post('/students', payload);
       setShowModal(false);
+      setFormData(initialFormState);
       fetchStudents();
       addToast('Ուսանողը հաջողությամբ ավելացվեց', 'success');
     } catch (error) {
@@ -110,24 +131,42 @@ const Students = () => {
     }
   };
 
+  const handleSaveUrgentNote = async (e, studentId) => {
+    e.stopPropagation();
+    try {
+      const res = await api.put(`/students/${studentId}`, {
+        urgent_notes: editingUrgentVal
+      });
+      setStudents(prev => prev.map(s => s.id === studentId ? res.data : s));
+      setEditingUrgentId(null);
+      addToast('Հրատապ նշումը պահպանվեց', 'success');
+    } catch (err) {
+      console.error(err);
+      addToast('Սխալ հրատապ նշումը պահպանելիս', 'error');
+    }
+  };
+
   const exportToCSV = () => {
     if (students.length === 0) {
       addToast('Արտահանելու համար տվյալներ չկան', 'error');
       return;
     }
     
-    const headers = ['ID', 'Անուն Ազգանուն', 'Ուղղություն', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Կարգավիճակ', 'Արված դասեր', 'Ամսավճար', 'Զեղչ (%)', 'Նվեր քարտ (֏)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
+    const headers = ['ID', 'Անուն Ազգանուն', 'Հրատապ նշում', 'Ուղղություն', 'Ձևաչափ', 'Հեռախոս', 'Էլ. հասցե', 'Սոց. հղում', 'Նախընտրած գրաֆիկ', 'Նախընտրած ժամ', 'Կարգավիճակ', 'Արված դասեր', 'Ամսավճար', 'Նվեր քարտ (֏)', 'Բալանս', 'Ստեղծման ամսաթիվ'];
     const rows = students.map(st => [
       st.id,
       `"${(st.full_name || '').replace(/"/g, '""')}"`,
+      `"${(st.urgent_notes || '').replace(/"/g, '""')}"`,
       `"${(st.course_direction || '').replace(/"/g, '""')}"`,
       `"${(st.course_format || 'Օֆլայն').replace(/"/g, '""')}"`,
       `"${(st.phone || '').replace(/"/g, '""')}"`,
       `"${(st.email || '').replace(/"/g, '""')}"`,
+      `"${(st.social_link || '').replace(/"/g, '""')}"`,
+      `"${(st.preferred_schedule || '').replace(/"/g, '""')}"`,
+      `"${(st.preferred_time || '').replace(/"/g, '""')}"`,
       `"${(st.status || '').replace(/"/g, '""')}"`,
       st.total_lessons_attended || 0,
       st.monthly_fee || 0,
-      st.discount_percent || 0,
       st.gift_card || 0,
       st.balance || 0,
       st.created_at ? new Date(st.created_at).toLocaleDateString('hy-AM') : ''
@@ -230,10 +269,10 @@ const Students = () => {
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50/60 text-gray-500 text-xs font-semibold uppercase tracking-wider">
                 <th className="p-3.5 whitespace-nowrap">Անուն Ազգանուն</th>
+                <th className="p-3.5 whitespace-nowrap">Հրատապ նշում</th>
                 <th className="p-3.5 whitespace-nowrap">Ուղղություն</th>
                 <th className="p-3.5 whitespace-nowrap">Ձևաչափ</th>
                 <th className="p-3.5 whitespace-nowrap">Հեռախոս</th>
-                <th className="p-3.5 whitespace-nowrap">Էլ. հասցե</th>
                 <th className="p-3.5 whitespace-nowrap">Կարգավիճակ</th>
                 <th className="p-3.5 text-center whitespace-nowrap">Արված դասեր</th>
                 <th className="p-3.5 text-right whitespace-nowrap">Բալանս</th>
@@ -244,10 +283,10 @@ const Students = () => {
                 Array.from({ length: 8 }).map((_, idx) => (
                   <tr key={idx} className="border-b border-gray-100 animate-pulse">
                     <td className="p-3.5"><div className="h-4 w-36 bg-gray-200 rounded" /></td>
+                    <td className="p-3.5"><div className="h-5 w-32 bg-gray-200 rounded-full" /></td>
                     <td className="p-3.5"><div className="h-4 w-40 bg-gray-200 rounded" /></td>
                     <td className="p-3.5"><div className="h-5 w-20 bg-gray-200 rounded-full" /></td>
                     <td className="p-3.5"><div className="h-4 w-28 bg-gray-200 rounded" /></td>
-                    <td className="p-3.5"><div className="h-4 w-36 bg-gray-200 rounded" /></td>
                     <td className="p-3.5"><div className="h-5 w-24 bg-gray-200 rounded-full" /></td>
                     <td className="p-3.5 text-center"><div className="h-5 w-14 bg-gray-200 rounded mx-auto" /></td>
                     <td className="p-3.5 text-right"><div className="h-5 w-20 bg-gray-200 rounded ml-auto" /></td>
@@ -260,7 +299,76 @@ const Students = () => {
                     onClick={() => navigate(`/students/${st.id}`)}
                     className="border-b border-gray-100 hover:bg-gray-50 transition cursor-pointer"
                   >
-                    <td className="p-3.5 font-semibold text-gray-800 whitespace-nowrap">{st.full_name}</td>
+                    <td className="p-3.5 font-semibold text-gray-800 whitespace-nowrap">
+                      <div>{st.full_name}</div>
+                      {(st.preferred_schedule || st.preferred_time) && (
+                        <div className="text-[11px] font-normal text-gray-400 mt-0.5">
+                          {[st.preferred_schedule, st.preferred_time].filter(Boolean).join(' • ')}
+                        </div>
+                      )}
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      {editingUrgentId === st.id ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={editingUrgentVal}
+                            onChange={(e) => setEditingUrgentVal(e.target.value)}
+                            placeholder="Օր.՝ Follow Up tomorrow"
+                            className="w-44 px-2.5 py-1 text-xs border border-amber-400 rounded-md bg-white text-gray-800 font-medium focus:outline-none"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={(e) => handleSaveUrgentNote(e, st.id)}
+                            className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 transition"
+                            title="Պահպանել"
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditingUrgentId(null); }}
+                            className="p-1 bg-gray-200 text-gray-600 rounded hover:bg-gray-300 transition"
+                            title="Չեղարկել"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : st.urgent_notes && st.urgent_notes.trim() ? (
+                        <div className="inline-flex items-center gap-1.5 group/urg">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300 shadow-2xs">
+                            <Flame size={13} className="text-orange-500 shrink-0" />
+                            <span>{st.urgent_notes}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingUrgentId(st.id);
+                              setEditingUrgentVal(st.urgent_notes || '');
+                            }}
+                            className="p-1 text-gray-400 hover:text-brand rounded hover:bg-brand/10 transition"
+                            title="Խմբագրել հրատապ նշումը"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingUrgentId(st.id);
+                            setEditingUrgentVal('');
+                          }}
+                          className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-amber-700 hover:bg-amber-50 px-2 py-1 rounded-md border border-dashed border-gray-200 hover:border-amber-300 transition"
+                          title="Ավելացնել հրատապ նշում"
+                        >
+                          <Plus size={12} /> Հրատապ նշում
+                        </button>
+                      )}
+                    </td>
                     <td className="p-3.5 text-brand font-semibold whitespace-nowrap">{st.course_direction}</td>
                     <td className="p-3.5 whitespace-nowrap">
                       {st.course_format?.toLowerCase().includes('օնլայն') || st.course_format?.toLowerCase().includes('online') ? (
@@ -274,7 +382,6 @@ const Students = () => {
                       )}
                     </td>
                     <td className="p-3.5 text-gray-600 whitespace-nowrap">{st.phone}</td>
-                    <td className="p-3.5 text-gray-500 whitespace-nowrap">{st.email}</td>
                     <td className="p-3.5 whitespace-nowrap">
                       <StatusBadge status={st.status} />
                     </td>
@@ -396,46 +503,71 @@ const Students = () => {
                 <div className="space-y-4">
                   <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-100 pb-1">Անձնական Տվյալներ</h3>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Անուն Ազգանուն *</label>
-                    <input required type="text" name="full_name" value={formData.full_name} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ Անուն Ազգանուն" />
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Անուն Ազգանուն</label>
+                    <input type="text" name="full_name" value={formData.full_name} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ Անուն Ազգանուն" />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Հեռախոսահամար *</label>
-                    <input required type="text" name="phone" value={formData.phone} onChange={handleChange} className="glass-input w-full" placeholder="+374 __ __ __ __" />
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Հեռախոսահամար</label>
+                    <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="glass-input w-full" placeholder="+374 __ __ __ __" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Էլ. Հասցե</label>
                     <input type="email" name="email" value={formData.email} onChange={handleChange} className="glass-input w-full" placeholder="email@example.com" />
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Սոց․ հարթակի հղում</label>
+                    <input type="text" name="social_link" value={formData.social_link} onChange={handleChange} className="glass-input w-full" placeholder="https://instagram.com/..." />
+                  </div>
                 </div>
 
-                {/* 2. Course Details */}
+                {/* 2. Course & Schedule Details */}
                 <div className="space-y-4">
                   <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-100 pb-1">Դասընթացի Մանրամասներ</h3>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Ուղղություն *</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Ուղղություն</label>
                     <select name="course_direction" value={formData.course_direction} onChange={handleChange} className="glass-input w-full">
                       {allDirections.map((dir, idx) => (
                         <option key={idx} value={dir}>{dir}</option>
                       ))}
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Ձևաչափ *</label>
-                    <select name="course_format" value={formData.course_format || 'Օֆլայն'} onChange={handleChange} className="glass-input w-full">
-                      <option value="Օֆլայն">🏢 Օֆլայն (Դասասենյակում)</option>
-                      <option value="Օնլայն">🌐 Օնլայն (Հեռավար)</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Ձևաչափ</label>
+                      <select name="course_format" value={formData.course_format || 'Օֆլայն'} onChange={handleChange} className="glass-input w-full">
+                        <option value="Օֆլայն">🏢 Օֆլայն</option>
+                        <option value="Օնլայն">🌐 Օնլայն</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
+                      <select name="status" value={formData.status} onChange={handleChange} className="glass-input w-full">
+                        <option>Նոր</option>
+                        <option>Հաստատված</option>
+                        <option>Ընթացիկ</option>
+                        <option>Անորոշ</option>
+                        <option>Արխիվ</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
-                    <select name="status" value={formData.status} onChange={handleChange} className="glass-input w-full">
-                      <option>Նոր</option>
-                      <option>Հաստատված</option>
-                      <option>Ընթացիկ</option>
-                      <option>Անորոշ</option>
-                      <option>Արխիվ</option>
-                    </select>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Նախընտրած գրաֆիկ</label>
+                    <input list="scheduleOptions" type="text" name="preferred_schedule" value={formData.preferred_schedule} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ Երկ, Չոր, Ուրբ" />
+                    <datalist id="scheduleOptions">
+                      <option value="Երկ, Չոր, Ուրբ" />
+                      <option value="Երեք, Հինգ, Շաբ" />
+                      <option value="Շաբաթ - Կիրակի" />
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Նախընտրած ժամանակահատված</label>
+                    <input list="timeOptions" type="text" name="preferred_time" value={formData.preferred_time} onChange={handleChange} className="glass-input w-full" placeholder="Օր.՝ 18:30 - 20:30" />
+                    <datalist id="timeOptions">
+                      <option value="Առավոտյան (11:00 - 13:00)" />
+                      <option value="Ցերեկային (14:00 - 16:00)" />
+                      <option value="Երեկոյան (18:30 - 20:30)" />
+                      <option value="Երեկոյան (19:00 - 21:00)" />
+                    </datalist>
                   </div>
                 </div>
               </div>
@@ -443,27 +575,37 @@ const Students = () => {
               {/* 3. Financials */}
               <div className="mb-6">
                 <h3 className="font-bold text-brand uppercase text-sm mb-3 border-b border-gray-100 pb-1">Ֆինանսներ</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար (AMD) *</label>
-                    <input required type="number" min="0" name="monthly_fee" value={formData.monthly_fee} onChange={handleChange} className="glass-input w-full" />
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար (AMD)</label>
+                    <input type="number" min="0" name="monthly_fee" value={formData.monthly_fee} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Զեղչ (%)</label>
-                    <input type="number" min="0" max="100" name="discount_percent" value={formData.discount_percent} onChange={handleChange} className="glass-input w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Նվեր քարտ / Զեղչ (֏)</label>
-                    <input type="number" min="0" name="gift_card" value={formData.gift_card || 0} onChange={handleChange} className="glass-input w-full" />
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Նվեր քարտ (֏)</label>
+                    <input type="number" min="0" name="gift_card" value={formData.gift_card ?? 0} onChange={handleChange} className="glass-input w-full" />
                   </div>
                 </div>
               </div>
 
-              {/* 4. Notes */}
-              <div>
-                <h3 className="font-bold text-brand uppercase text-sm mb-3 border-b border-gray-100 pb-1">Լրացուցիչ</h3>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Նշումներ</label>
-                <textarea name="comment" value={formData.comment} onChange={handleChange} rows="3" className="glass-input w-full resize-y" placeholder="Այլ նշումներ..."></textarea>
+              {/* 4. Notes & Urgent Notes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-bold text-amber-600 uppercase text-sm mb-2 border-b border-gray-100 pb-1 flex items-center gap-1.5">
+                    <Flame size={15} /> Հրատապ նշում (տեսանելի ցանկում)
+                  </h3>
+                  <input
+                    type="text"
+                    name="urgent_notes"
+                    value={formData.urgent_notes}
+                    onChange={handleChange}
+                    className="glass-input w-full border-amber-300 focus:border-amber-500"
+                    placeholder="Օր.՝ Follow Up tomorrow"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-100 pb-1">Նշումներ</h3>
+                  <textarea name="comment" value={formData.comment} onChange={handleChange} rows="2" className="glass-input w-full resize-y" placeholder="Այլ նշումներ ուսանողի մասին..."></textarea>
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api';
-import { ArrowLeft, CreditCard, Trash2, Edit2, X, Users2, Check } from 'lucide-react';
+import { ArrowLeft, CreditCard, Trash2, Edit2, X, Users2, Check, Flame, FileText, ExternalLink } from 'lucide-react';
 import StatusBadge from '../components/StatusBadge';
 import { useToast } from '../context/ToastContext';
 
@@ -66,7 +66,12 @@ const StudentProfile = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.put(`/students/${id}`, formData);
+      const payload = {
+        ...formData,
+        monthly_fee: formData.monthly_fee === '' ? 0 : Number(formData.monthly_fee) || 0,
+        gift_card: formData.gift_card === '' ? 0 : Number(formData.gift_card) || 0
+      };
+      await api.put(`/students/${id}`, payload);
       setShowEditModal(false);
       fetchStudent();
       addToast('Տվյալները հաջողությամբ թարմացվեցին', 'success');
@@ -182,7 +187,7 @@ const StudentProfile = () => {
             <div className="flex flex-col items-center mb-6 pt-4">
               <h2 className="text-2xl font-bold text-gray-800">{student.full_name}</h2>
               <p className="text-brand font-bold text-center mt-1">{student.course_direction}</p>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-3 flex items-center gap-2 flex-wrap justify-center">
                 <StatusBadge status={student.status} />
                 <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
                   student.course_format?.toLowerCase().includes('օնլայն') || student.course_format?.toLowerCase().includes('online')
@@ -192,24 +197,49 @@ const StudentProfile = () => {
                   {student.course_format || 'Օֆլայն'}
                 </span>
               </div>
+              {student.urgent_notes && student.urgent_notes.trim() && (
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-300 text-xs font-bold">
+                  <Flame size={14} className="text-orange-500 shrink-0" />
+                  <span>{student.urgent_notes}</span>
+                </div>
+              )}
             </div>
             
             <div className="space-y-4 text-gray-700 border-t border-gray-100 pt-5">
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Հեռախոսահամար</p>
-                <p className="font-medium">{student.phone}</p>
+                <p className="font-medium">{student.phone || '—'}</p>
               </div>
               <div>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Էլ. Հասցե</p>
-                <p className="font-medium">{student.email}</p>
+                <p className="font-medium">{student.email || '—'}</p>
               </div>
+              {student.social_link && (
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Սոց․ հարթակի հղում</p>
+                  <a
+                    href={student.social_link.startsWith('http') ? student.social_link : `https://${student.social_link}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-brand hover:underline inline-flex items-center gap-1 break-all text-sm"
+                  >
+                    <span>{student.social_link}</span>
+                    <ExternalLink size={13} />
+                  </a>
+                </div>
+              )}
+              {(student.preferred_schedule || student.preferred_time) && (
+                <div>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Նախընտրած Գրաֆիկ / Ժամ</p>
+                  <p className="font-medium text-sm">
+                    {[student.preferred_schedule, student.preferred_time].filter(Boolean).join(' • ')}
+                  </p>
+                </div>
+              )}
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Զեղչ / Նվեր քարտ</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Նվեր քարտ</p>
                 <p className="font-medium flex items-center flex-wrap gap-1.5">
-                  <span>{student.monthly_fee?.toLocaleString()} ֏</span>
-                  {student.discount_percent > 0 && (
-                    <span className="text-brand bg-brand/10 px-2 py-0.5 rounded text-xs font-bold">-{student.discount_percent}%</span>
-                  )}
+                  <span>{(student.monthly_fee || 0).toLocaleString()} ֏</span>
                   {student.gift_card > 0 && (
                     <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-xs font-bold">
                       🎁 -{student.gift_card.toLocaleString()} ֏
@@ -295,6 +325,49 @@ const StudentProfile = () => {
                     </span>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes & Urgent Notes Card */}
+          <div className="glass-panel p-6">
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <FileText className="text-brand" size={20} />
+                <h3 className="text-lg font-bold text-gray-800">Նշումներ</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(true)}
+                className="text-xs font-semibold text-brand hover:underline flex items-center gap-1"
+              >
+                <Edit2 size={12} /> Խմբագրել
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1 flex items-center gap-1">
+                  <Flame size={13} /> Հրատապ նշում
+                </p>
+                {student.urgent_notes && student.urgent_notes.trim() ? (
+                  <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm font-semibold">
+                    {student.urgent_notes}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">Հրատապ նշում չկա</p>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ընդհանուր նշումներ</p>
+                {student.comment && student.comment.trim() ? (
+                  <div className="p-3 rounded-lg bg-gray-50 border border-gray-200/80 text-gray-700 text-sm whitespace-pre-wrap">
+                    {student.comment}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic">Նշումներ չկան</p>
+                )}
               </div>
             </div>
           </div>
@@ -446,7 +519,7 @@ const StudentProfile = () => {
 
       {showEditModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden my-8">
+          <div className="bg-gray-50 rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden my-8">
             <div className="flex justify-between items-center p-5 border-b border-gray-200 bg-white sticky top-0 z-10">
               <h2 className="text-xl font-bold text-gray-800">Խմբագրել Ուսանողի Տվյալները</h2>
               <button onClick={() => setShowEditModal(false)} className="text-gray-400 hover:text-black">
@@ -461,15 +534,19 @@ const StudentProfile = () => {
                   <h3 className="font-bold text-brand uppercase text-sm mb-2 border-b border-gray-200 pb-1">Անձնական</h3>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Անուն Ազգանուն</label>
-                    <input required type="text" name="full_name" value={formData.full_name || ''} onChange={handleChange} className="glass-input w-full" />
+                    <input type="text" name="full_name" value={formData.full_name || ''} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Հեռախոսահամար</label>
-                    <input required type="text" name="phone" value={formData.phone || ''} onChange={handleChange} className="glass-input w-full" />
+                    <input type="text" name="phone" value={formData.phone || ''} onChange={handleChange} className="glass-input w-full" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Էլ. Հասցե</label>
-                    <input required type="email" name="email" value={formData.email || ''} onChange={handleChange} className="glass-input w-full" />
+                    <input type="email" name="email" value={formData.email || ''} onChange={handleChange} className="glass-input w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">Սոց․ հարթակի հղում</label>
+                    <input type="text" name="social_link" value={formData.social_link || ''} onChange={handleChange} className="glass-input w-full" placeholder="https://instagram.com/..." />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1">Կարգավիճակ</label>
@@ -500,20 +577,53 @@ const StudentProfile = () => {
                       <option value="Օնլայն">🌐 Օնլայն (Հեռավար)</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար</label>
-                    <input required type="number" min="0" name="monthly_fee" value={formData.monthly_fee ?? 0} onChange={handleChange} className="glass-input w-full" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Նախընտրած գրաֆիկ</label>
+                      <input type="text" name="preferred_schedule" value={formData.preferred_schedule || ''} onChange={handleChange} className="glass-input w-full" placeholder="Երկ, Չոր, Ուրբ" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Նախընտրած ժամ</label>
+                      <input type="text" name="preferred_time" value={formData.preferred_time || ''} onChange={handleChange} className="glass-input w-full" placeholder="18:30 - 20:30" />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1">Զեղչ (%)</label>
-                      <input type="number" min="0" max="100" name="discount_percent" value={formData.discount_percent ?? 0} onChange={handleChange} className="glass-input w-full" />
+                      <label className="block text-sm font-bold text-gray-700 mb-1">Ամսավճար (֏)</label>
+                      <input type="number" min="0" name="monthly_fee" value={formData.monthly_fee ?? 0} onChange={handleChange} className="glass-input w-full" />
                     </div>
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-1">Նվեր քարտ (֏)</label>
                       <input type="number" min="0" name="gift_card" value={formData.gift_card ?? 0} onChange={handleChange} className="glass-input w-full" />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-4 border-t border-gray-200">
+                <div>
+                  <label className="block text-sm font-bold text-amber-600 mb-1 flex items-center gap-1">
+                    <Flame size={14} /> Հրատապ նշում (տեսանելի ցանկում)
+                  </label>
+                  <input
+                    type="text"
+                    name="urgent_notes"
+                    value={formData.urgent_notes || ''}
+                    onChange={handleChange}
+                    className="glass-input w-full border-amber-300 focus:border-amber-500"
+                    placeholder="Օր.՝ Follow Up tomorrow"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">Նշումներ</label>
+                  <textarea
+                    name="comment"
+                    value={formData.comment || ''}
+                    onChange={handleChange}
+                    rows="2"
+                    className="glass-input w-full resize-y"
+                    placeholder="Նշումներ ուսանողի մասին..."
+                  />
                 </div>
               </div>
 

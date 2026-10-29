@@ -80,7 +80,7 @@ class Instructor(InstructorBase):
 # Student Schemas
 # =================
 class StudentBase(BaseModel):
-    full_name: str
+    full_name: Optional[str] = ""
     course_direction: Optional[str] = None
     course_format: Optional[str] = None
     location: Optional[str] = None
@@ -93,6 +93,9 @@ class StudentBase(BaseModel):
     source: Optional[str] = None
     comment: Optional[str] = None
     urgent_notes: Optional[str] = None
+    social_link: Optional[str] = None
+    preferred_schedule: Optional[str] = None
+    preferred_time: Optional[str] = None
     custom_lessons_attended: Optional[int] = None
 
 class StudentCreate(StudentBase):
@@ -105,13 +108,16 @@ class StudentUpdate(BaseModel):
     location: Optional[str] = None
     status: Optional[str] = None
     phone: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     monthly_fee: Optional[int] = None
     discount_percent: Optional[int] = None
     gift_card: Optional[int] = None
     source: Optional[str] = None
     comment: Optional[str] = None
     urgent_notes: Optional[str] = None
+    social_link: Optional[str] = None
+    preferred_schedule: Optional[str] = None
+    preferred_time: Optional[str] = None
     custom_lessons_attended: Optional[int] = None
 
 class StudentGroupDetail(BaseModel):

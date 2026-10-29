@@ -127,9 +127,9 @@ const Dashboard = () => {
       <div className="glass-panel p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
           <div>
-            <h2 className="text-xl font-bold text-gray-800">Ուսանողների քանակի դինամիկան (վերջին 30 օր)</h2>
+            <h2 className="text-xl font-bold text-gray-800">Ուսանողների քանակի շաբաթական դինամիկան</h2>
             <p className="text-sm text-gray-500 mt-0.5">
-              Օրական բաշխվածություն՝ ըստ ակտիվ ուսանողների թվի փոփոխության
+              Շաբաթական բաշխվածություն՝ ըստ ակտիվ ուսանողների թվի փոփոխության
             </p>
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold">
@@ -146,23 +146,23 @@ const Dashboard = () => {
 
         {loading ? (
           <div className="pt-6">
-            <div className="h-[280px] flex items-end justify-between gap-1.5 sm:gap-2 px-2 pb-2 border-b border-gray-200">
-              {Array.from({ length: 24 }).map((_, i) => {
+            <div className="h-[280px] flex items-end justify-between gap-3 sm:gap-4 px-4 pb-2 border-b border-gray-200">
+              {Array.from({ length: 8 }).map((_, i) => {
                 const fakeHeight = 35 + ((i * 17) % 55);
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center h-full justify-end">
-                    <div className="w-4 h-2.5 bg-gray-100 rounded mb-1.5 animate-pulse" />
+                    <div className="w-6 h-3 bg-gray-100 rounded mb-1.5 animate-pulse" />
                     <div
                       style={{ height: `${fakeHeight}%` }}
-                      className="w-full max-w-[26px] rounded-t-md bg-gray-200/80 animate-pulse"
+                      className="w-full max-w-[52px] rounded-t-lg bg-gray-200/80 animate-pulse"
                     />
                   </div>
                 );
               })}
             </div>
-            <div className="flex items-center justify-between gap-2 px-2 pt-3">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="h-2.5 w-8 bg-gray-100 rounded animate-pulse" />
+            <div className="flex items-center justify-between gap-3 px-4 pt-3">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="h-3 w-16 bg-gray-100 rounded animate-pulse mx-auto" />
               ))}
             </div>
           </div>
@@ -172,7 +172,7 @@ const Dashboard = () => {
           </div>
         ) : (
           <div className="pt-6">
-            <div className="h-[280px] flex items-end justify-between gap-1.5 sm:gap-2 px-2 pb-2 border-b border-gray-200">
+            <div className="h-[280px] flex items-end justify-between gap-3 sm:gap-4 px-4 pb-2 border-b border-gray-200">
               {trend.map((day, idx) => {
                 const isDown = day.status === 'down' || day.diff < 0;
                 const heightPercent = day.count > 0
@@ -194,7 +194,7 @@ const Dashboard = () => {
                     </div>
 
                     {/* Value label on top of bar */}
-                    <span className={`text-[10px] font-bold mb-1 transition-all ${
+                    <span className={`text-xs font-bold mb-1.5 transition-all ${
                       isDown ? 'text-red-600' : 'text-emerald-700'
                     }`}>
                       {day.count}
@@ -204,7 +204,7 @@ const Dashboard = () => {
                     <div
                       style={{ height: `${heightPercent}%` }}
                       title={`${day.date} • Ուսանողներ՝ ${day.count} (${day.diff > 0 ? `+${day.diff}` : day.diff === 0 ? 'փոփոխություն չկա' : day.diff})`}
-                      className={`w-full max-w-[26px] rounded-t-md transition-all duration-300 cursor-pointer shadow-xs ${
+                      className={`w-full max-w-[52px] rounded-t-lg transition-all duration-300 cursor-pointer shadow-xs ${
                         isDown
                           ? 'bg-gradient-to-t from-red-600 to-red-400 hover:from-red-700 hover:to-red-500 border border-red-600/30'
                           : 'bg-gradient-to-t from-emerald-600 to-emerald-400 hover:from-emerald-700 hover:to-emerald-500 border border-emerald-600/30'
@@ -215,18 +215,15 @@ const Dashboard = () => {
               })}
             </div>
 
-            {/* X-Axis Date Labels */}
-            <div className="flex items-center justify-between gap-1.5 sm:gap-2 px-2 pt-2">
-              {trend.map((day, idx) => {
-                const showLabel = idx % 2 === 0 || idx === trend.length - 1;
-                return (
-                  <div key={day.date || idx} className="flex-1 text-center overflow-hidden">
-                    <span className={`text-[10px] font-medium text-gray-500 block ${showLabel ? '' : 'hidden md:block'}`}>
-                      {day.label}
-                    </span>
-                  </div>
-                );
-              })}
+            {/* X-Axis Weekly Date Labels */}
+            <div className="flex items-center justify-between gap-3 sm:gap-4 px-4 pt-2.5">
+              {trend.map((day, idx) => (
+                <div key={day.date || idx} className="flex-1 text-center overflow-hidden">
+                  <span className="text-[11px] font-semibold text-gray-600 block truncate" title={day.date}>
+                    {day.label}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}

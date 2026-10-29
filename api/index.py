@@ -35,6 +35,9 @@ def init_db_if_needed():
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
                     "ALTER TABLE groups ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS course_format VARCHAR DEFAULT 'Օֆլայն';",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS social_link VARCHAR;",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS preferred_schedule VARCHAR;",
+                    "ALTER TABLE students ADD COLUMN IF NOT EXISTS preferred_time VARCHAR;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS custom_lessons_attended INTEGER;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS is_deleted INTEGER DEFAULT 0;",
                     "ALTER TABLE students ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;",
@@ -81,6 +84,28 @@ def init_db_if_needed():
                         ~models.Student.status.ilike("%անորոշ%")
                     ).update({models.Student.status: "Նոր"}, synchronize_session=False)
                     db.query(models.Group).update({models.Group.name: ""}, synchronize_session=False)
+                    # Normalize empty string emails to None
+                    db.query(models.Student).filter(models.Student.email == "").update({models.Student.email: None}, synchronize_session=False)
+                    # Populate sample urgent notes & preferences once if none exist yet
+                    has_urgent = db.query(models.Student).filter(
+                        models.Student.urgent_notes != None,
+                        models.Student.urgent_notes != ""
+                    ).count()
+                    if has_urgent == 0:
+                        recent_sts = db.query(models.Student).order_by(models.Student.id.desc()).limit(8).all()
+                        sample_urgent = [
+                            ("Follow Up tomorrow", "Ցանկանում է միանալ երեկոյան խմբին", "https://instagram.com/lilia_mkh", "Երկ, Չոր, Ուրբ", "18:30 - 20:30"),
+                            ("Զանգահարել երկուշաբթի ժամը 14:00", "Հետաքրքրված է եկամտային հարկի վերադարձով", "https://facebook.com/arman.qocharyan", "Երեք, Հինգ, Շաբ", "19:00 - 21:00"),
+                            ("Սպասում է պայմանագրին", "Ուղարկել պայմանագրի օրինակը էլ․ փոստին", "https://t.me/monika_sed", "Երկ, Չոր, Ուրբ", "11:00 - 13:00"),
+                            ("Follow Up tomorrow", "Խնդրել է զանգահարել աշխատանքային ժամից հետո", "https://instagram.com/gagik_antonyan", "Երեք, Հինգ, Շաբ", "18:30 - 20:30"),
+                        ]
+                        for idx_u, st_u in enumerate(recent_sts[:len(sample_urgent)]):
+                            u_note, c_note, s_link, p_sched, p_time = sample_urgent[idx_u]
+                            st_u.urgent_notes = u_note
+                            st_u.comment = c_note
+                            st_u.social_link = s_link
+                            st_u.preferred_schedule = p_sched
+                            st_u.preferred_time = p_time
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)
@@ -184,7 +209,7 @@ def get_stats(db: Session = Depends(get_db)):
     debts_info = crud.get_debtors(db)
     total_debt_amount = debts_info.get("total_debt_amount", 0)
     total_debtors = debts_info.get("total_debtors", 0)
-    daily_trend = crud.get_monthly_student_trend(db, days_count=30)
+    daily_trend = crud.get_monthly_student_trend(db, days_count=8)
     
     return {
         "total_students": students_count,
@@ -201,13 +226,15 @@ def get_stats(db: Session = Depends(get_db)):
 @app.post("/api/students", response_model=schemas.Student)
 def create_student(student: schemas.StudentCreate, db: Session = Depends(get_db)):
     """Endpoint for landing page and CRM to create students"""
-    db_student = crud.get_student_by_email(db, email=student.email)
-    if db_student:
-        if getattr(db_student, 'is_deleted', 0) or (db_student.status and "ջնջված" in db_student.status.lower()):
-            db_student.email = f"{db_student.email} (ջնջված #{db_student.id})"
-            db.commit()
-        else:
-            raise HTTPException(status_code=400, detail="Email already registered")
+    clean_email = student.email.strip() if (student.email and student.email.strip()) else None
+    if clean_email:
+        db_student = crud.get_student_by_email(db, email=clean_email)
+        if db_student:
+            if getattr(db_student, 'is_deleted', 0) or (db_student.status and "ջնջված" in db_student.status.lower()):
+                db_student.email = f"{db_student.email} (ջնջված #{db_student.id})"
+                db.commit()
+            else:
+                raise HTTPException(status_code=400, detail="Email already registered")
     return crud.create_student(db=db, student=student)
 
 from typing import Optional

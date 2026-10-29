@@ -301,7 +301,14 @@ def get_debtors(db: Session, course_direction: str = None, search: str = None):
     }
 
 def create_student(db: Session, student: schemas.StudentCreate):
-    db_student = models.Student(**student.dict(), is_deleted=0)
+    data = student.dict()
+    if not data.get("email") or not str(data.get("email")).strip():
+        data["email"] = None
+    else:
+        data["email"] = str(data["email"]).strip()
+    if not data.get("full_name") or not str(data.get("full_name")).strip():
+        data["full_name"] = "Անանուն ուսանող"
+    db_student = models.Student(**data, is_deleted=0)
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
@@ -316,6 +323,13 @@ def update_student(db: Session, student_id: int, student: schemas.StudentUpdate)
     ).first()
     if db_student:
         update_data = student.dict(exclude_unset=True)
+        if "email" in update_data:
+            if not update_data["email"] or not str(update_data["email"]).strip():
+                update_data["email"] = None
+            else:
+                update_data["email"] = str(update_data["email"]).strip()
+        if "full_name" in update_data and (not update_data["full_name"] or not str(update_data["full_name"]).strip()):
+            update_data["full_name"] = "Անանուն ուսանող"
         for key, value in update_data.items():
             setattr(db_student, key, value)
         db.commit()
@@ -1287,15 +1301,17 @@ def update_student_total_lessons(db: Session, student_id: int, total_lessons: in
         )
     return get_student(db, student_id)
 
-def get_monthly_student_trend(db: Session, days_count: int = 30):
+def get_monthly_student_trend(db: Session, days_count: int = 8):
     import datetime
     record_daily_student_snapshot(db)
     today = datetime.date.today()
-    start_date = today - datetime.timedelta(days=days_count - 1)
+    weeks_count = days_count if days_count <= 16 else 8
+    current_monday = today - datetime.timedelta(days=today.weekday())
+    first_monday = current_monday - datetime.timedelta(weeks=weeks_count - 1)
 
     all_students = db.query(models.Student).all()
     snapshots = db.query(models.StudentDailySnapshot).filter(
-        models.StudentDailySnapshot.snapshot_date >= str(start_date - datetime.timedelta(days=1))
+        models.StudentDailySnapshot.snapshot_date >= str(first_monday - datetime.timedelta(days=7))
     ).all()
     snap_map = {s.snapshot_date: s.student_count for s in snapshots}
 
@@ -1305,6 +1321,8 @@ def get_monthly_student_trend(db: Session, days_count: int = 30):
             return snap_map[d_str]
         cnt = 0
         for st in all_students:
+            if getattr(st, 'status', None) in ["Արխիվ", "Ավարտած", "Ջնջված"]:
+                continue
             st_date = None
             if getattr(st, 'created_at', None):
                 try:
@@ -1322,16 +1340,19 @@ def get_monthly_student_trend(db: Session, days_count: int = 30):
         return cnt
 
     result = []
-    prev_count = reconstruct_count_for_day(start_date - datetime.timedelta(days=1))
+    prev_sunday = first_monday - datetime.timedelta(days=1)
+    prev_count = reconstruct_count_for_day(prev_sunday)
 
-    for i in range(days_count):
-        curr_day = start_date + datetime.timedelta(days=i)
-        curr_count = reconstruct_count_for_day(curr_day)
+    for w in range(weeks_count):
+        week_start = first_monday + datetime.timedelta(weeks=w)
+        week_end = min(today, week_start + datetime.timedelta(days=6))
+        curr_count = reconstruct_count_for_day(week_end)
         diff = curr_count - prev_count
         status = "down" if diff < 0 else "up_or_same"
+        label = f"{week_start.strftime('%d.%m')}-{week_end.strftime('%d.%m')}"
         result.append({
-            "date": str(curr_day),
-            "label": curr_day.strftime("%d.%m"),
+            "date": f"{week_start.strftime('%d.%m.%Y')} - {week_end.strftime('%d.%m.%Y')}",
+            "label": label,
             "count": curr_count,
             "diff": diff,
             "status": status
