@@ -16,6 +16,17 @@ def init_db_if_needed():
     global _db_initialized
     if not _db_initialized:
         try:
+            # Fast path for serverless cold starts: check if schema v5 is already initialized
+            db_check = SessionLocal()
+            try:
+                if crud.get_admin(db_check, "__schema_v5_ready__"):
+                    _db_initialized = True
+                    return
+            except Exception:
+                pass
+            finally:
+                db_check.close()
+
             # Ensure columns exist in DB
             try:
                 import sqlalchemy
@@ -47,22 +58,29 @@ def init_db_if_needed():
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS initial_lessons INTEGER DEFAULT 0;",
                     "ALTER TABLE group_student ADD COLUMN IF NOT EXISTS joined_at TIMESTAMP;",
                     "ALTER TABLE group_lessons ADD COLUMN IF NOT EXISTS instructor_id INTEGER;",
+                    "CREATE INDEX IF NOT EXISTS idx_students_del_status ON students (is_deleted, status);",
+                    "CREATE INDEX IF NOT EXISTS idx_payments_student_del ON payments (student_id, is_deleted);",
+                    "CREATE INDEX IF NOT EXISTS idx_group_student_sid ON group_student (student_id);",
+                    "CREATE INDEX IF NOT EXISTS idx_group_student_gid ON group_student (group_id);",
+                    "CREATE INDEX IF NOT EXISTS idx_groups_del_status ON groups (is_deleted, status);",
+                    "CREATE INDEX IF NOT EXISTS idx_group_hist_gid ON group_instructor_history (group_id);",
+                    "CREATE INDEX IF NOT EXISTS idx_group_hist_iid ON group_instructor_history (instructor_id);",
+                    "CREATE INDEX IF NOT EXISTS idx_lesson_hist_entity ON lesson_edit_history (entity_type, entity_id);",
                 ]
-                for col_sql in ddl_statements:
-                    try:
-                        with engine.connect() as conn:
+                with engine.connect() as conn:
+                    for col_sql in ddl_statements:
+                        try:
                             conn.execute(sqlalchemy.text(col_sql))
                             conn.commit()
-                    except Exception as ddl_err:
-                        # Fallback for SQLite without IF NOT EXISTS
-                        if "IF NOT EXISTS" in col_sql:
-                            try:
-                                fallback_sql = col_sql.replace("IF NOT EXISTS ", "")
-                                with engine.connect() as conn:
+                        except Exception:
+                            conn.rollback()
+                            if "IF NOT EXISTS" in col_sql:
+                                try:
+                                    fallback_sql = col_sql.replace("IF NOT EXISTS ", "")
                                     conn.execute(sqlalchemy.text(fallback_sql))
                                     conn.commit()
-                            except Exception:
-                                pass
+                                except Exception:
+                                    conn.rollback()
             except Exception as me:
                 print("Column add error:", me)
 
@@ -142,6 +160,17 @@ def init_db_if_needed():
                                         active_h.start_lesson = max(0, new_cond - 4)
                                     active_h.lessons_taught = max(0, new_cond - (active_h.start_lesson or 0))
                         crud.create_admin(db, "__migrated_8_lessons_2_days__", "done")
+
+                    # Remove Sunday ("Կիր." / "Կիրակի") from group days and student preferred schedules
+                    db.query(models.Group).filter(models.Group.days.ilike("%Կիր%")).update(
+                        {models.Group.days: "Հնգ., Շբթ."}, synchronize_session=False
+                    )
+                    db.query(models.Student).filter(models.Student.preferred_schedule.ilike("%Կիր%")).update(
+                        {models.Student.preferred_schedule: "Հինգ, Շաբ"}, synchronize_session=False
+                    )
+
+                    if not crud.get_admin(db, "__schema_v5_ready__"):
+                        crud.create_admin(db, "__schema_v5_ready__", "done")
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)

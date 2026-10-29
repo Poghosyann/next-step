@@ -29,12 +29,16 @@ const Instructors = () => {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [instRes, courseRes] = await Promise.all([
+      const [instResult, courseResult] = await Promise.allSettled([
         api.get('/instructors', { params: selectedMonth ? { month: selectedMonth } : {} }),
         api.get('/courses')
       ]);
-      setInstructors(instRes.data || []);
-      setCourses(courseRes.data || []);
+      if (instResult.status === 'fulfilled') {
+        setInstructors(Array.isArray(instResult.value.data) ? instResult.value.data : []);
+      }
+      if (courseResult.status === 'fulfilled') {
+        setCourses(Array.isArray(courseResult.value.data) ? courseResult.value.data : []);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
     } finally {

@@ -275,7 +275,7 @@ const StudentForm = () => {
                   <option value="Երկ, Չոր" />
                   <option value="Երեք, Հինգ" />
                   <option value="Չոր, Ուրբ" />
-                  <option value="Շաբաթ, Կիրակի" />
+                  <option value="Հինգ, Շաբ" />
                 </datalist>
               </div>
               <div>

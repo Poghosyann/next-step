@@ -208,7 +208,7 @@ def seed(force_reset: bool = False):
                 "start_date": str(today - datetime.timedelta(days=3)),
                 "start_time": "13:00",
                 "end_time": "15:00",
-                "days": "Շբթ., Կիր.",
+                "days": "Հնգ., Շբթ.",
                 "notes": "Նոր ձևավորված խումբ",
                 "conducted_lessons": 1
             }

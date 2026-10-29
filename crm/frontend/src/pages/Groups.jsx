@@ -26,7 +26,7 @@ const Groups = () => {
   const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
   const studentDropdownRef = useRef(null);
 
-  const allDays = ['Երկ.', 'Երք.', 'Չրք.', 'Հնգ.', 'Ուրբ.', 'Շբթ.', 'Կիր.'];
+  const allDays = ['Երկ.', 'Երք.', 'Չրք.', 'Հնգ.', 'Ուրբ.', 'Շբթ.'];
   const [selectedDays, setSelectedDays] = useState([]);
 
   const getGroupProgress = (gr) => {

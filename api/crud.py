@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload, joinedload
 import models, schemas
 
 # ============
@@ -74,11 +74,16 @@ def get_lesson_edit_history(db: Session, entity_type: str = None, entity_id: int
 # ============
 # Students & Balance
 # ============
-def record_daily_student_snapshot(db: Session):
+_last_snapshot_date = None
+
+def record_daily_student_snapshot(db: Session, force: bool = True):
+    global _last_snapshot_date
     try:
         import datetime
         from sqlalchemy import or_
         today_str = str(datetime.date.today())
+        if not force and _last_snapshot_date == today_str:
+            return
         active_count = db.query(models.Student).filter(
             or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
             or_(models.Student.status == None, models.Student.status.notin_(["Արխիվ", "Ավարտած", "Ջնջված"]))
@@ -92,10 +97,11 @@ def record_daily_student_snapshot(db: Session):
             snap = models.StudentDailySnapshot(snapshot_date=today_str, student_count=active_count)
             db.add(snap)
         db.commit()
+        _last_snapshot_date = today_str
     except Exception as e:
         print("record_daily_student_snapshot error:", e)
 
-def calculate_student_balance(student, db: Session = None):
+def calculate_student_balance(student, db: Session = None, preloaded_links_map: dict = None):
     try:
         active_payments = [
             p for p in (getattr(student, 'payments', []) or [])
@@ -113,16 +119,19 @@ def calculate_student_balance(student, db: Session = None):
         
         lesson_cost = int(round(monthly_fee / 8.0)) if monthly_fee > 0 else 0
         
-        links_map = {}
-        if db is not None and getattr(student, 'id', None):
-            try:
-                links = db.query(models.StudentGroupLink).filter(
-                    models.StudentGroupLink.student_id == student.id
-                ).all()
-                for lnk in links:
-                    links_map[lnk.group_id] = lnk.initial_lessons or 0
-            except Exception as le:
-                print("links fetch error:", le)
+        if preloaded_links_map is not None:
+            links_map = preloaded_links_map
+        else:
+            links_map = {}
+            if db is not None and getattr(student, 'id', None):
+                try:
+                    links = db.query(models.StudentGroupLink).filter(
+                        models.StudentGroupLink.student_id == student.id
+                    ).all()
+                    for lnk in links:
+                        links_map[lnk.group_id] = lnk.initial_lessons or 0
+                except Exception as le:
+                    print("links fetch error:", le)
 
         total_lessons_attended = 0
         group_names = []
@@ -176,7 +185,7 @@ def calculate_student_balance(student, db: Session = None):
             "student_groups": []
         }
 
-def enrich_student(student, db: Session = None):
+def enrich_student(student, db: Session = None, preloaded_links_map: dict = None, include_history: bool = True):
     if not student:
         return None
     try:
@@ -184,7 +193,7 @@ def enrich_student(student, db: Session = None):
             p for p in (getattr(student, 'payments', []) or [])
             if not is_record_deleted(p)
         ]
-        stats = calculate_student_balance(student, db=db)
+        stats = calculate_student_balance(student, db=db, preloaded_links_map=preloaded_links_map)
         student.total_paid = stats["total_paid"]
         student.total_charged = stats["total_charged"]
         student.total_lessons_attended = stats["total_lessons_attended"]
@@ -192,7 +201,7 @@ def enrich_student(student, db: Session = None):
         student.balance = stats["balance"]
         student.group_names = stats["group_names"]
         student.student_groups = stats["student_groups"]
-        if db is not None and getattr(student, "id", None):
+        if include_history and db is not None and getattr(student, "id", None):
             student.lesson_edit_history = get_lesson_edit_history(db, "student", student.id)
         else:
             student.lesson_edit_history = []
@@ -200,18 +209,65 @@ def enrich_student(student, db: Session = None):
         print("enrich_student error:", e)
     return student
 
+def enrich_students_batch(students_list, db: Session = None, include_history: bool = False):
+    if not students_list:
+        return []
+    student_ids = [s.id for s in students_list if getattr(s, "id", None) is not None]
+    links_by_student = {}
+    if db is not None and student_ids:
+        try:
+            all_links = db.query(models.StudentGroupLink).filter(
+                models.StudentGroupLink.student_id.in_(student_ids)
+            ).all()
+            for lnk in all_links:
+                links_by_student.setdefault(lnk.student_id, {})[lnk.group_id] = lnk.initial_lessons or 0
+        except Exception as le:
+            print("batch links fetch error:", le)
+
+    hist_by_student = {}
+    if include_history and db is not None and student_ids:
+        try:
+            all_hist = db.query(models.LessonEditHistory).filter(
+                models.LessonEditHistory.entity_type == "student",
+                models.LessonEditHistory.entity_id.in_(student_ids)
+            ).order_by(models.LessonEditHistory.id.desc()).all()
+            for h in all_hist:
+                lst = hist_by_student.setdefault(h.entity_id, [])
+                if len(lst) < 30:
+                    lst.append(h)
+        except Exception as he:
+            print("batch history fetch error:", he)
+
+    for st in students_list:
+        try:
+            s_links = links_by_student.get(st.id, {})
+            enrich_student(st, db=None, preloaded_links_map=s_links, include_history=False)
+            if include_history:
+                st.lesson_edit_history = hist_by_student.get(st.id, [])
+        except Exception as e:
+            print("enrich_students_batch item error:", e)
+    return students_list
+
 def get_student_by_email(db: Session, email: str):
     return db.query(models.Student).filter(models.Student.email == email).first()
 
 from sqlalchemy import or_
 
 def get_student(db: Session, student_id: int):
-    st = db.query(models.Student).filter(
-        models.Student.id == student_id,
-        or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
-        or_(models.Student.status == None, ~models.Student.status.ilike("%ջնջված%"))
-    ).first()
-    return enrich_student(st, db=db)
+    st = (
+        db.query(models.Student)
+        .options(
+            selectinload(models.Student.payments),
+            selectinload(models.Student.groups).joinedload(models.Group.course)
+        )
+        .filter(
+            models.Student.id == student_id,
+            or_(models.Student.is_deleted == 0, models.Student.is_deleted == None),
+            or_(models.Student.status == None, ~models.Student.status.ilike("%ջնջված%"))
+        )
+        .first()
+    )
+    return enrich_student(st, db=db, include_history=True)
 
 def get_students(
     db: Session,
@@ -259,12 +315,17 @@ def get_students(
             )
         
     total = query.count()
-    items = query.order_by(models.Student.id.desc()).offset(skip).limit(limit).all()
-    for st in items:
-        try:
-            enrich_student(st, db=db)
-        except Exception as e:
-            print("enrich error on item:", e)
+    items = (
+        query.options(
+            selectinload(models.Student.payments),
+            selectinload(models.Student.groups).joinedload(models.Group.course)
+        )
+        .order_by(models.Student.id.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+    enrich_students_batch(items, db=db, include_history=False)
     return {"total": total, "items": items}
 
 def get_debtors(db: Session, course_direction: str = None, search: str = None):
@@ -284,11 +345,17 @@ def get_debtors(db: Session, course_direction: str = None, search: str = None):
                 models.Student.email.ilike(sf)
             )
         )
-    all_students = query.all()
+    all_students = (
+        query.options(
+            selectinload(models.Student.payments),
+            selectinload(models.Student.groups).joinedload(models.Group.course)
+        )
+        .all()
+    )
+    enrich_students_batch(all_students, db=db, include_history=False)
     debtors = []
     total_debt_amount = 0
     for st in all_students:
-        enrich_student(st, db=db)
         if (st.balance or 0) < 0:
             debtors.append(st)
             total_debt_amount += abs(st.balance)
@@ -463,20 +530,32 @@ def delete_course(db: Session, course_id: int):
 import datetime
 import calendar
 
+def _group_eager_options():
+    return [
+        joinedload(models.Group.course),
+        joinedload(models.Group.instructor),
+        selectinload(models.Group.lessons),
+        selectinload(models.Group.instructor_history)
+    ]
+
 def ensure_group_instructor_history(db: Session, grp: models.Group):
     try:
         if not grp or not grp.instructor_id:
             return
-        active_hist = db.query(models.GroupInstructorHistory).filter(
-            models.GroupInstructorHistory.group_id == grp.id,
-            models.GroupInstructorHistory.unassigned_date == None
-        ).first()
+        preloaded_hist = getattr(grp, "instructor_history", None)
+        if preloaded_hist is not None:
+            active_hist = next((h for h in preloaded_hist if h.unassigned_date is None), None)
+        else:
+            active_hist = db.query(models.GroupInstructorHistory).filter(
+                models.GroupInstructorHistory.group_id == grp.id,
+                models.GroupInstructorHistory.unassigned_date == None
+            ).first()
         if not active_hist:
             inst = grp.instructor
             if not inst:
                 inst = db.query(models.Instructor).filter(models.Instructor.id == grp.instructor_id).first()
             inst_name = f"{inst.first_name} {inst.last_name}".strip() if inst else f"Դասախոս #{grp.instructor_id}"
-            all_prev = db.query(models.GroupInstructorHistory).filter(
+            all_prev = preloaded_hist if preloaded_hist is not None else db.query(models.GroupInstructorHistory).filter(
                 models.GroupInstructorHistory.group_id == grp.id
             ).all()
             start_les = max([h.end_lesson or 0 for h in all_prev], default=0)
@@ -535,27 +614,28 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, t
             label = f"{c_title} ({grp.days})" if getattr(grp, 'days', None) else c_title
             assigned_groups.append(label)
 
-    # Calculate total lessons taught across all groups (past & current) from GroupInstructorHistory
-    if db is not None:
-        try:
-            hist_records = db.query(models.GroupInstructorHistory).filter(
-                models.GroupInstructorHistory.instructor_id == instructor.id
-            ).all()
-            seen_active_groups = set()
-            for h in hist_records:
-                grp = group_map.get(h.group_id)
-                if h.unassigned_date is None and grp and not is_record_deleted(grp):
-                    seen_active_groups.add(grp.id)
-                    taught = max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
-                    total_lessons_taught += taught
-                else:
-                    total_lessons_taught += (h.lessons_taught or 0)
+    # Calculate total lessons taught across all groups (past & current) using preloaded GroupInstructorHistory
+    try:
+        hist_records = [
+            h for g in groups
+            for h in (getattr(g, 'instructor_history', []) or [])
+            if h.instructor_id == instructor.id
+        ]
+        seen_active_groups = set()
+        for h in hist_records:
+            grp = group_map.get(h.group_id)
+            if h.unassigned_date is None and grp and not is_record_deleted(grp):
+                seen_active_groups.add(grp.id)
+                taught = max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
+                total_lessons_taught += taught
+            else:
+                total_lessons_taught += (h.lessons_taught or 0)
 
-            for grp in groups:
-                if grp.instructor_id == instructor.id and grp.id not in seen_active_groups and not is_record_deleted(grp):
-                    total_lessons_taught += (grp.conducted_lessons or 0)
-        except Exception as he:
-            print("hist calc error:", he)
+        for grp in groups:
+            if grp.instructor_id == instructor.id and grp.id not in seen_active_groups and not is_record_deleted(grp):
+                total_lessons_taught += (grp.conducted_lessons or 0)
+    except Exception as he:
+        print("hist calc error:", he)
 
     if end_of_period > today and not is_current_month:
         # Future month selected
@@ -566,18 +646,14 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, t
             "assigned_groups": assigned_groups
         }
 
-    # Calculate target month lessons (including lessons taught by this instructor before being reassigned)
-    if db is not None:
-        try:
-            explicit_month_lessons = db.query(models.GroupLesson).filter(
-                models.GroupLesson.instructor_id == instructor.id,
-                models.GroupLesson.lesson_date >= first_of_month_str,
-                models.GroupLesson.lesson_date <= end_of_period_str
-            ).all()
-        except Exception:
-            explicit_month_lessons = []
-    else:
-        explicit_month_lessons = []
+    # Calculate target month lessons from preloaded GroupLesson records
+    explicit_month_lessons = [
+        gl for g in groups
+        for gl in (getattr(g, 'lessons', []) or [])
+        if getattr(gl, 'instructor_id', None) == instructor.id
+        and gl.lesson_date
+        and first_of_month_str <= gl.lesson_date <= end_of_period_str
+    ]
 
     groups_with_explicit = set()
     for gl in explicit_month_lessons:
@@ -605,21 +681,18 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, t
             continue
 
         inst_taught_in_grp = 0
-        if db is not None:
-            h_list = db.query(models.GroupInstructorHistory).filter(
-                models.GroupInstructorHistory.group_id == grp.id,
-                models.GroupInstructorHistory.instructor_id == instructor.id
-            ).all()
-            if h_list:
-                for h in h_list:
-                    if h.assigned_date and h.assigned_date[:10] > end_of_period_str:
-                        continue
-                    if h.unassigned_date is None:
-                        inst_taught_in_grp += max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
-                    elif h.unassigned_date[:10] >= first_of_month_str:
-                        inst_taught_in_grp += (h.lessons_taught or 0)
-            elif grp.instructor_id == instructor.id:
-                inst_taught_in_grp = grp.conducted_lessons or 0
+        h_list = [
+            h for h in (getattr(grp, 'instructor_history', []) or [])
+            if h.instructor_id == instructor.id
+        ]
+        if h_list:
+            for h in h_list:
+                if h.assigned_date and h.assigned_date[:10] > end_of_period_str:
+                    continue
+                if h.unassigned_date is None:
+                    inst_taught_in_grp += max(0, (grp.conducted_lessons or 0) - (h.start_lesson or 0))
+                elif h.unassigned_date[:10] >= first_of_month_str:
+                    inst_taught_in_grp += (h.lessons_taught or 0)
         elif grp.instructor_id == instructor.id:
             inst_taught_in_grp = grp.conducted_lessons or 0
 
@@ -644,7 +717,6 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, t
                     (3, ['հնգ', 'հինգ']),
                     (4, ['ուրբ', 'ուբթ', 'ուր']),
                     (5, ['շբթ', 'շաբ']),
-                    (6, ['կիր']),
                 ]
                 group_days_str = (grp.days or "").lower()
                 active_weekdays = set()
@@ -679,7 +751,7 @@ def calculate_instructor_monthly_stats(instructor, groups, db: Session = None, t
         "assigned_groups": assigned_groups
     }
 
-def enrich_instructor(instructor, groups, db: Session = None, target_month: str = None):
+def enrich_instructor(instructor, groups, db: Session = None, target_month: str = None, preloaded_history: list = None):
     if not instructor:
         return None
     stats = calculate_instructor_monthly_stats(instructor, groups, db=db, target_month=target_month)
@@ -687,7 +759,9 @@ def enrich_instructor(instructor, groups, db: Session = None, target_month: str 
     instructor.current_month_salary = stats["current_month_salary"]
     instructor.total_lessons_taught = stats["total_lessons_taught"]
     instructor.assigned_groups = stats["assigned_groups"]
-    if db is not None and getattr(instructor, "id", None):
+    if preloaded_history is not None:
+        instructor.lesson_edit_history = preloaded_history
+    elif db is not None and getattr(instructor, "id", None):
         instructor.lesson_edit_history = get_lesson_edit_history(db, "instructor", instructor.id)
     else:
         instructor.lesson_edit_history = []
@@ -700,11 +774,27 @@ def get_instructors(db: Session, skip: int = 0, limit: int = 100, include_delete
         or_(models.Instructor.status == None, models.Instructor.status != "Ջնջված")
     )
     instructors = query.offset(skip).limit(limit).all()
-    groups = db.query(models.Group).all()
+    groups = db.query(models.Group).options(*_group_eager_options()).all()
     for grp in groups:
         ensure_group_instructor_history(db, grp)
+
+    inst_ids = [i.id for i in instructors if getattr(i, "id", None) is not None]
+    hist_by_inst = {}
+    if inst_ids:
+        try:
+            all_hist = db.query(models.LessonEditHistory).filter(
+                models.LessonEditHistory.entity_type == "instructor",
+                models.LessonEditHistory.entity_id.in_(inst_ids)
+            ).order_by(models.LessonEditHistory.id.desc()).all()
+            for h in all_hist:
+                lst = hist_by_inst.setdefault(h.entity_id, [])
+                if len(lst) < 30:
+                    lst.append(h)
+        except Exception:
+            pass
+
     for inst in instructors:
-        enrich_instructor(inst, groups, db=db, target_month=month)
+        enrich_instructor(inst, groups, db=db, target_month=month, preloaded_history=hist_by_inst.get(inst.id, []))
     return instructors
 
 def create_instructor(db: Session, instructor: schemas.InstructorCreate):
@@ -721,7 +811,7 @@ def get_instructor(db: Session, instructor_id: int):
         or_(models.Instructor.status == None, models.Instructor.status != "Ջնջված")
     ).first()
     if inst:
-        groups = db.query(models.Group).all()
+        groups = db.query(models.Group).options(*_group_eager_options()).all()
         enrich_instructor(inst, groups, db=db)
     return inst
 
@@ -731,7 +821,7 @@ def update_instructor(db: Session, instructor_id: int, instructor: schemas.Instr
         or_(models.Instructor.is_deleted == 0, models.Instructor.is_deleted == None)
     ).first()
     if db_instructor:
-        groups = db.query(models.Group).all()
+        groups = db.query(models.Group).options(*_group_eager_options()).all()
         old_stats = calculate_instructor_monthly_stats(db_instructor, groups, db=db)
         old_lessons = old_stats["current_month_lessons"]
         update_data = instructor.dict(exclude_unset=True)
@@ -761,7 +851,7 @@ def update_instructor_lessons(db: Session, instructor_id: int, lessons_count: in
     ).first()
     if not db_instructor:
         return None
-    groups = db.query(models.Group).all()
+    groups = db.query(models.Group).options(*_group_eager_options()).all()
     old_stats = calculate_instructor_monthly_stats(db_instructor, groups, db=db)
     old_lessons = old_stats["current_month_lessons"]
     new_lessons = max(0, lessons_count)
@@ -850,9 +940,14 @@ def calculate_group_progress(grp):
         "progress_percent": pct
     }
 
+_last_auto_check_date = None
+
 def auto_check_daily_group_lessons(db: Session):
+    global _last_auto_check_date
     today = datetime.date.today()
     today_str = str(today)
+    if _last_auto_check_date == today_str:
+        return
 
     day_patterns = [
         (0, ['երկ']),
@@ -861,14 +956,18 @@ def auto_check_daily_group_lessons(db: Session):
         (3, ['հնգ', 'հինգ']),
         (4, ['ուրբ', 'ուբթ', 'ուր']),
         (5, ['շբթ', 'շաբ']),
-        (6, ['կիր']),
     ]
 
     try:
-        groups = db.query(models.Group).filter(
-            or_(models.Group.is_deleted == 0, models.Group.is_deleted == None),
-            or_(models.Group.status == None, models.Group.status != "Ջնջված")
-        ).all()
+        groups = (
+            db.query(models.Group)
+            .options(*_group_eager_options())
+            .filter(
+                or_(models.Group.is_deleted == 0, models.Group.is_deleted == None),
+                or_(models.Group.status == None, models.Group.status != "Ջնջված")
+            )
+            .all()
+        )
         changed = False
 
         for grp in groups:
@@ -904,20 +1003,27 @@ def auto_check_daily_group_lessons(db: Session):
                             lesson_date=today_str
                         )
                         db.add(gl)
-                        active_hist = db.query(models.GroupInstructorHistory).filter(
-                            models.GroupInstructorHistory.group_id == grp.id,
-                            models.GroupInstructorHistory.unassigned_date == None
-                        ).first()
+                        active_hist = next(
+                            (h for h in (getattr(grp, "instructor_history", []) or []) if h.unassigned_date is None),
+                            None
+                        )
                         if active_hist:
                             active_hist.lessons_taught = max(0, grp.conducted_lessons - (active_hist.start_lesson or 0))
                         changed = True
 
         if changed:
             db.commit()
+        _last_auto_check_date = today_str
     except Exception as e:
         print("Auto check lessons error:", e)
 
-def enrich_group(grp, db: Session = None):
+def enrich_group(
+    grp,
+    db: Session = None,
+    preloaded_deleted_inst_ids: set = None,
+    preloaded_history: list = None,
+    skip_student_enrichment: bool = False
+):
     if not grp:
         return None
     progress = calculate_group_progress(grp)
@@ -934,22 +1040,22 @@ def enrich_group(grp, db: Session = None):
         grp.course = None
 
     active_students = [st for st in (getattr(grp, 'students', []) or []) if not is_record_deleted(st)]
-    for st in active_students:
-        try:
-            enrich_student(st, db=db)
-        except Exception:
-            pass
+    if not skip_student_enrichment:
+        enrich_students_batch(active_students, db=db, include_history=False)
     grp.students = active_students
 
-    deleted_inst_ids = set()
-    if db is not None:
-        try:
-            del_insts = db.query(models.Instructor.id).filter(
-                or_(models.Instructor.is_deleted == 1, models.Instructor.status == "Ջնջված")
-            ).all()
-            deleted_inst_ids = {r[0] for r in del_insts}
-        except Exception:
-            pass
+    if preloaded_deleted_inst_ids is not None:
+        deleted_inst_ids = preloaded_deleted_inst_ids
+    else:
+        deleted_inst_ids = set()
+        if db is not None:
+            try:
+                del_insts = db.query(models.Instructor.id).filter(
+                    or_(models.Instructor.is_deleted == 1, models.Instructor.status == "Ջնջված")
+                ).all()
+                deleted_inst_ids = {r[0] for r in del_insts}
+            except Exception:
+                pass
 
     history_items = []
     try:
@@ -983,7 +1089,9 @@ def enrich_group(grp, db: Session = None):
         print("enrich_group history error:", he)
 
     grp.instructor_history_list = history_items
-    if db is not None and getattr(grp, "id", None):
+    if preloaded_history is not None:
+        grp.lesson_edit_history = preloaded_history
+    elif db is not None and getattr(grp, "id", None):
         grp.lesson_edit_history = get_lesson_edit_history(db, "group", grp.id)
     else:
         grp.lesson_edit_history = []
@@ -991,21 +1099,81 @@ def enrich_group(grp, db: Session = None):
 
 def get_groups(db: Session, skip: int = 0, limit: int = 100, include_deleted: bool = False):
     auto_check_daily_group_lessons(db)
-    query = db.query(models.Group).filter(
-        or_(models.Group.is_deleted == 0, models.Group.is_deleted == None),
-        or_(models.Group.status == None, models.Group.status != "Ջնջված")
+    query = (
+        db.query(models.Group)
+        .options(
+            joinedload(models.Group.course),
+            joinedload(models.Group.instructor),
+            selectinload(models.Group.instructor_history),
+            selectinload(models.Group.students).selectinload(models.Student.payments),
+            selectinload(models.Group.students).selectinload(models.Student.groups).joinedload(models.Group.course)
+        )
+        .filter(
+            or_(models.Group.is_deleted == 0, models.Group.is_deleted == None),
+            or_(models.Group.status == None, models.Group.status != "Ջնջված")
+        )
     )
     groups = query.offset(skip).limit(limit).all()
+
+    # Batch-enrich all students across all groups in one pass
+    unique_students = {}
     for grp in groups:
-        enrich_group(grp, db=db)
+        for st in (getattr(grp, "students", []) or []):
+            if not is_record_deleted(st) and st.id not in unique_students:
+                unique_students[st.id] = st
+    enrich_students_batch(list(unique_students.values()), db=db, include_history=False)
+
+    deleted_inst_ids = set()
+    try:
+        del_insts = db.query(models.Instructor.id).filter(
+            or_(models.Instructor.is_deleted == 1, models.Instructor.status == "Ջնջված")
+        ).all()
+        deleted_inst_ids = {r[0] for r in del_insts}
+    except Exception:
+        pass
+
+    group_ids = [g.id for g in groups if getattr(g, "id", None) is not None]
+    hist_by_group = {}
+    if group_ids:
+        try:
+            all_hist = db.query(models.LessonEditHistory).filter(
+                models.LessonEditHistory.entity_type == "group",
+                models.LessonEditHistory.entity_id.in_(group_ids)
+            ).order_by(models.LessonEditHistory.id.desc()).all()
+            for h in all_hist:
+                lst = hist_by_group.setdefault(h.entity_id, [])
+                if len(lst) < 30:
+                    lst.append(h)
+        except Exception:
+            pass
+
+    for grp in groups:
+        enrich_group(
+            grp,
+            db=db,
+            preloaded_deleted_inst_ids=deleted_inst_ids,
+            preloaded_history=hist_by_group.get(grp.id, []),
+            skip_student_enrichment=True
+        )
     return groups
 
 def get_group(db: Session, group_id: int):
-    grp = db.query(models.Group).filter(
-        models.Group.id == group_id,
-        or_(models.Group.is_deleted == 0, models.Group.is_deleted == None),
-        or_(models.Group.status == None, models.Group.status != "Ջնջված")
-    ).first()
+    grp = (
+        db.query(models.Group)
+        .options(
+            joinedload(models.Group.course),
+            joinedload(models.Group.instructor),
+            selectinload(models.Group.instructor_history),
+            selectinload(models.Group.students).selectinload(models.Student.payments),
+            selectinload(models.Group.students).selectinload(models.Student.groups).joinedload(models.Group.course)
+        )
+        .filter(
+            models.Group.id == group_id,
+            or_(models.Group.is_deleted == 0, models.Group.is_deleted == None),
+            or_(models.Group.status == None, models.Group.status != "Ջնջված")
+        )
+        .first()
+    )
     return enrich_group(grp, db=db)
 
 def conduct_group_lesson(db: Session, group_id: int):
@@ -1303,24 +1471,32 @@ def update_student_total_lessons(db: Session, student_id: int, total_lessons: in
 
 def get_monthly_student_trend(db: Session, days_count: int = 8):
     import datetime
-    record_daily_student_snapshot(db)
+    record_daily_student_snapshot(db, force=False)
     today = datetime.date.today()
     weeks_count = days_count if days_count <= 16 else 8
     current_monday = today - datetime.timedelta(days=today.weekday())
     first_monday = current_monday - datetime.timedelta(weeks=weeks_count - 1)
 
-    all_students = db.query(models.Student).all()
     snapshots = db.query(models.StudentDailySnapshot).filter(
         models.StudentDailySnapshot.snapshot_date >= str(first_monday - datetime.timedelta(days=7))
     ).all()
     snap_map = {s.snapshot_date: s.student_count for s in snapshots}
+    all_students_cache = None
 
     def reconstruct_count_for_day(d: datetime.date):
+        nonlocal all_students_cache
         d_str = str(d)
         if d_str in snap_map:
             return snap_map[d_str]
+        if all_students_cache is None:
+            all_students_cache = db.query(
+                models.Student.status,
+                models.Student.created_at,
+                models.Student.is_deleted,
+                models.Student.deleted_at
+            ).all()
         cnt = 0
-        for st in all_students:
+        for st in all_students_cache:
             if getattr(st, 'status', None) in ["Արխիվ", "Ավարտած", "Ջնջված"]:
                 continue
             st_date = None
