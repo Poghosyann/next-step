@@ -111,7 +111,7 @@ def calculate_student_balance(student, db: Session = None):
         if gift_card > 0:
             monthly_fee = max(0, monthly_fee - gift_card)
         
-        lesson_cost = int(round(monthly_fee / 12.0)) if monthly_fee > 0 else 0
+        lesson_cost = int(round(monthly_fee / 8.0)) if monthly_fee > 0 else 0
         
         links_map = {}
         if db is not None and getattr(student, 'id', None):

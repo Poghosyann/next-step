@@ -94,10 +94,10 @@ def init_db_if_needed():
                     if has_urgent == 0:
                         recent_sts = db.query(models.Student).order_by(models.Student.id.desc()).limit(8).all()
                         sample_urgent = [
-                            ("Follow Up tomorrow", "Ցանկանում է միանալ երեկոյան խմբին", "https://instagram.com/lilia_mkh", "Երկ, Չոր, Ուրբ", "18:30 - 20:30"),
-                            ("Զանգահարել երկուշաբթի ժամը 14:00", "Հետաքրքրված է եկամտային հարկի վերադարձով", "https://facebook.com/arman.qocharyan", "Երեք, Հինգ, Շաբ", "19:00 - 21:00"),
-                            ("Սպասում է պայմանագրին", "Ուղարկել պայմանագրի օրինակը էլ․ փոստին", "https://t.me/monika_sed", "Երկ, Չոր, Ուրբ", "11:00 - 13:00"),
-                            ("Follow Up tomorrow", "Խնդրել է զանգահարել աշխատանքային ժամից հետո", "https://instagram.com/gagik_antonyan", "Երեք, Հինգ, Շաբ", "18:30 - 20:30"),
+                            ("Follow Up tomorrow", "Ցանկանում է միանալ երեկոյան խմբին", "https://instagram.com/lilia_mkh", "Երկ, Չոր", "18:30 - 20:30"),
+                            ("Զանգահարել երկուշաբթի ժամը 14:00", "Հետաքրքրված է եկամտային հարկի վերադարձով", "https://facebook.com/arman.qocharyan", "Երեք, Հինգ", "19:00 - 21:00"),
+                            ("Սպասում է պայմանագրին", "Ուղարկել պայմանագրի օրինակը էլ․ փոստին", "https://t.me/monika_sed", "Երկ, Չոր", "11:00 - 13:00"),
+                            ("Follow Up tomorrow", "Խնդրել է զանգահարել աշխատանքային ժամից հետո", "https://instagram.com/gagik_antonyan", "Երեք, Հինգ", "18:30 - 20:30"),
                         ]
                         for idx_u, st_u in enumerate(recent_sts[:len(sample_urgent)]):
                             u_note, c_note, s_link, p_sched, p_time = sample_urgent[idx_u]
@@ -106,6 +106,42 @@ def init_db_if_needed():
                             st_u.social_link = s_link
                             st_u.preferred_schedule = p_sched
                             st_u.preferred_time = p_time
+
+                    # One-time migration: 2 lessons per week & 8 lessons per monthly fee
+                    if not crud.get_admin(db, "__migrated_8_lessons_2_days__"):
+                        db.query(models.Group).filter(models.Group.days == "Երկ, Չոր, Ուրբ").update(
+                            {models.Group.days: "Երկ., Չրք."}, synchronize_session=False
+                        )
+                        db.query(models.Group).filter(models.Group.days == "Երեք, Հինգ, Շաբ").update(
+                            {models.Group.days: "Երք., Հնգ."}, synchronize_session=False
+                        )
+                        db.query(models.Student).filter(models.Student.preferred_schedule == "Երկ, Չոր, Ուրբ").update(
+                            {models.Student.preferred_schedule: "Երկ, Չոր"}, synchronize_session=False
+                        )
+                        db.query(models.Student).filter(models.Student.preferred_schedule == "Երեք, Հինգ, Շաբ").update(
+                            {models.Student.preferred_schedule: "Երեք, Հինգ"}, synchronize_session=False
+                        )
+                        db.query(models.Student).filter(
+                            models.Student.status == "Արխիվ",
+                            models.Student.custom_lessons_attended == 24
+                        ).update(
+                            {models.Student.custom_lessons_attended: 16}, synchronize_session=False
+                        )
+                        # Scale seeded groups' conducted_lessons from 12-lesson/month scale to 8-lesson/month scale
+                        lesson_scale_map = {22: 14, 18: 12, 15: 10, 14: 10, 11: 7, 9: 6, 7: 5, 5: 4, 3: 2}
+                        for grp_item in db.query(models.Group).all():
+                            if grp_item.conducted_lessons in lesson_scale_map:
+                                new_cond = lesson_scale_map[grp_item.conducted_lessons]
+                                grp_item.conducted_lessons = new_cond
+                                active_h = db.query(models.GroupInstructorHistory).filter(
+                                    models.GroupInstructorHistory.group_id == grp_item.id,
+                                    models.GroupInstructorHistory.unassigned_date == None
+                                ).first()
+                                if active_h:
+                                    if (active_h.start_lesson or 0) > new_cond:
+                                        active_h.start_lesson = max(0, new_cond - 4)
+                                    active_h.lessons_taught = max(0, new_cond - (active_h.start_lesson or 0))
+                        crud.create_admin(db, "__migrated_8_lessons_2_days__", "done")
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)

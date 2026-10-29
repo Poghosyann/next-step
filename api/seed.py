@@ -42,21 +42,21 @@ def seed(force_reset: bool = False):
         c_fin = models.Course(
             title="Ֆինանսական հաշվառում",
             description="Հաշվապահական հաշվառման հիմունքներ, հաշվային պլան, ֆինանսական հաշվետվություններ և գործնական խնդիրներ",
-            total_lessons=36,
+            total_lessons=24,
             status="Ակտիվ",
             is_deleted=0
         )
         c_tax = models.Course(
             title="Հարկային հաշվառում",
             description="ՀՀ հարկային օրենսգիրք, ԱԱՀ, շահութահարկ, շրջանառության հարկ, e-Invoicing և հաշվետվությունների ներկայացում",
-            total_lessons=24,
+            total_lessons=16,
             status="Ակտիվ",
             is_deleted=0
         )
         c_1c = models.Course(
             title="1C ՀԾ ծրագրեր",
             description="ՀԾ-Հաշվապահ և 1C 8.3 ծրագրերի խորացված գործնական կիրառում իրական կազմակերպության օրինակով",
-            total_lessons=24,
+            total_lessons=16,
             status="Ակտիվ",
             is_deleted=0
         )
@@ -100,40 +100,40 @@ def seed(force_reset: bool = False):
         db.refresh(inst2)
         db.refresh(inst3)
 
-        # 4. Create 10 Groups with varying conducted_lessons (no group name)
+        # 4. Create 10 Groups with varying conducted_lessons (2 lessons per week, 8 lessons per month)
         groups_spec = [
             {
                 "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst1.id,
-                "start_date": str(today - datetime.timedelta(days=55)),
+                "start_date": str(today - datetime.timedelta(days=50)),
                 "start_time": "18:30",
                 "end_time": "20:30",
-                "days": "Երկ, Չոր, Ուրբ",
+                "days": "Երկ., Չրք.",
                 "notes": "Երեկոյան հիմնական խումբ, 2-րդ փուլ",
-                "conducted_lessons": 22
+                "conducted_lessons": 14
             },
             {
                 "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst1.id,
-                "start_date": str(today - datetime.timedelta(days=38)),
+                "start_date": str(today - datetime.timedelta(days=35)),
                 "start_time": "19:00",
                 "end_time": "21:00",
-                "days": "Երեք, Հինգ, Շաբ",
-                "notes": "Դասախոսի փոփոխությամբ խումբ (7-րդ դասից՝ Անահիտ Գրիգորյան)",
-                "conducted_lessons": 15
+                "days": "Երք., Հնգ.",
+                "notes": "Դասախոսի փոփոխությամբ խումբ",
+                "conducted_lessons": 10
             },
             {
                 "name": "",
                 "course_id": c_fin.id,
                 "instructor_id": inst2.id,
-                "start_date": str(today - datetime.timedelta(days=24)),
+                "start_date": str(today - datetime.timedelta(days=21)),
                 "start_time": "11:00",
                 "end_time": "13:00",
-                "days": "Երկ, Չոր, Ուրբ",
+                "days": "Երկ., Չրք.",
                 "notes": "Ցերեկային խումբ",
-                "conducted_lessons": 9
+                "conducted_lessons": 6
             },
             {
                 "name": "",
@@ -142,31 +142,31 @@ def seed(force_reset: bool = False):
                 "start_date": str(today - datetime.timedelta(days=8)),
                 "start_time": "16:00",
                 "end_time": "18:00",
-                "days": "Երեք, Հինգ, Շաբ",
+                "days": "Երք., Հնգ.",
                 "notes": "Նոր մեկնարկած խումբ",
-                "conducted_lessons": 3
+                "conducted_lessons": 2
             },
             {
                 "name": "",
                 "course_id": c_tax.id,
                 "instructor_id": inst2.id,
-                "start_date": str(today - datetime.timedelta(days=45)),
+                "start_date": str(today - datetime.timedelta(days=42)),
                 "start_time": "19:00",
                 "end_time": "21:00",
-                "days": "Երկ, Չոր, Ուրբ",
+                "days": "Չրք., Ուրբ.",
                 "notes": "Հարկային օրենսգրքի խորացված խումբ",
-                "conducted_lessons": 18
+                "conducted_lessons": 12
             },
             {
                 "name": "",
                 "course_id": c_tax.id,
                 "instructor_id": inst2.id,
-                "start_date": str(today - datetime.timedelta(days=28)),
+                "start_date": str(today - datetime.timedelta(days=25)),
                 "start_time": "18:30",
                 "end_time": "20:30",
-                "days": "Երեք, Հինգ, Շաբ",
+                "days": "Երք., Հնգ.",
                 "notes": "Գործող հաշվապահների վերապատրաստում",
-                "conducted_lessons": 11
+                "conducted_lessons": 7
             },
             {
                 "name": "",
@@ -175,9 +175,9 @@ def seed(force_reset: bool = False):
                 "start_date": str(today - datetime.timedelta(days=14)),
                 "start_time": "20:00",
                 "end_time": "22:00",
-                "days": "Երկ, Չոր, Ուրբ",
+                "days": "Երկ., Չրք.",
                 "notes": "Հեռավար (Zoom) ձևաչափով խումբ",
-                "conducted_lessons": 5
+                "conducted_lessons": 4
             },
             {
                 "name": "",
@@ -186,9 +186,9 @@ def seed(force_reset: bool = False):
                 "start_date": str(today - datetime.timedelta(days=35)),
                 "start_time": "18:30",
                 "end_time": "20:30",
-                "days": "Երեք, Հինգ, Շաբ",
+                "days": "Երք., Հնգ.",
                 "notes": "ՀԾ-Հաշվապահ + 1C 8.3 պրակտիկ խումբ",
-                "conducted_lessons": 14
+                "conducted_lessons": 10
             },
             {
                 "name": "",
@@ -197,9 +197,9 @@ def seed(force_reset: bool = False):
                 "start_date": str(today - datetime.timedelta(days=18)),
                 "start_time": "19:00",
                 "end_time": "21:00",
-                "days": "Երկ, Չոր, Ուրբ",
+                "days": "Չրք., Ուրբ.",
                 "notes": "Երեկոյան պրակտիկ խումբ",
-                "conducted_lessons": 7
+                "conducted_lessons": 5
             },
             {
                 "name": "",
@@ -208,7 +208,7 @@ def seed(force_reset: bool = False):
                 "start_date": str(today - datetime.timedelta(days=3)),
                 "start_time": "13:00",
                 "end_time": "15:00",
-                "days": "Երեք, Հինգ, Շաբ",
+                "days": "Շբթ., Կիր.",
                 "notes": "Նոր ձևավորված խումբ",
                 "conducted_lessons": 1
             }
@@ -389,7 +389,7 @@ def seed(force_reset: bool = False):
                 source=source,
                 comment="Գրանցված ուսանող",
                 urgent_notes="",
-                custom_lessons_attended=24 if status == "Արխիվ" else None,
+                custom_lessons_attended=16 if status == "Արխիվ" else None,
                 is_deleted=0,
                 created_at=created_dt
             )

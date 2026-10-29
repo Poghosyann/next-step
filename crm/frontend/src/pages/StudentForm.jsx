@@ -261,7 +261,7 @@ const StudentForm = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Նախընտրած գրաֆիկ</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Նախընտրած գրաֆիկ (շաբաթական 2 օր)</label>
                 <input
                   list="scheduleOptions"
                   type="text"
@@ -269,12 +269,13 @@ const StudentForm = () => {
                   value={formData.preferred_schedule}
                   onChange={handleChange}
                   className="glass-input w-full"
-                  placeholder="Օր.՝ Երկ, Չոր, Ուրբ"
+                  placeholder="Օր.՝ Երկ, Չոր"
                 />
                 <datalist id="scheduleOptions">
-                  <option value="Երկ, Չոր, Ուրբ" />
-                  <option value="Երեք, Հինգ, Շաբ" />
-                  <option value="Շաբաթ - Կիրակի" />
+                  <option value="Երկ, Չոր" />
+                  <option value="Երեք, Հինգ" />
+                  <option value="Չոր, Ուրբ" />
+                  <option value="Շաբաթ, Կիրակի" />
                 </datalist>
               </div>
               <div>
@@ -305,7 +306,7 @@ const StudentForm = () => {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Ամսավճար (AMD)</label>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Վճար՝ 8 դասի համար (AMD)</label>
                 <input
                   type="number"
                   min="0"

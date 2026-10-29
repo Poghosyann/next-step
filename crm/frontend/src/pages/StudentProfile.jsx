@@ -193,7 +193,7 @@ const StudentProfile = () => {
                 </div>
               )}
               <div>
-                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Ամսավճար / Նվեր քարտ</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Վճար (8 դաս) / Նվեր քարտ</p>
                 <p className="font-medium flex items-center flex-wrap gap-1.5">
                   <span>{(student.monthly_fee || 0).toLocaleString()} ֏</span>
                   {student.gift_card > 0 && (
