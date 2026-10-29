@@ -562,6 +562,7 @@ const Payments = () => {
             >
               Հաջորդ
             </button>
+          </div>
         </div>
       </div>
     </div>
