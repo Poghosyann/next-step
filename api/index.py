@@ -19,7 +19,7 @@ def init_db_if_needed():
             # Fast path for serverless cold starts: check if schema v5 is already initialized
             db_check = SessionLocal()
             try:
-                if crud.get_admin(db_check, "__schema_v5_ready__"):
+                if crud.get_admin(db_check, "__schema_v6_ready__"):
                     _db_initialized = True
                     return
             except Exception:
@@ -169,8 +169,8 @@ def init_db_if_needed():
                         {models.Student.preferred_schedule: "Հինգ, Շաբ"}, synchronize_session=False
                     )
 
-                    if not crud.get_admin(db, "__schema_v5_ready__"):
-                        crud.create_admin(db, "__schema_v5_ready__", "done")
+                    if not crud.get_admin(db, "__schema_v6_ready__"):
+                        crud.create_admin(db, "__schema_v6_ready__", "done")
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)
@@ -524,5 +524,120 @@ def read_lesson_edit_history(
 def reset_demo_data_endpoint():
     seed.seed(force_reset=True)
     return {"ok": True, "message": "Demo data reset and seeded successfully"}
+
+# ============
+# Public Website Content (Admin Panel)
+# ============
+import json
+import base64
+from fastapi import Request, Body
+from fastapi.responses import JSONResponse, Response
+import site_defaults
+
+ADMIN_TOKEN = "fake-jwt-token-123"
+MAX_IMAGE_BYTES = 4 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+
+def require_admin(request: Request):
+    auth = request.headers.get("authorization", "")
+    token = auth[7:] if auth.lower().startswith("bearer ") else auth
+    if token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+def _get_site_row(db: Session):
+    return db.query(models.SiteContent).filter(models.SiteContent.key == "main").first()
+
+@app.get("/api/site-content")
+def get_site_content(db: Session = Depends(get_db)):
+    content = site_defaults.get_default_content()
+    try:
+        row = _get_site_row(db)
+        if row and row.data:
+            content = site_defaults.merge_with_defaults(json.loads(row.data))
+    except Exception as e:
+        print("get_site_content error:", e)
+    return JSONResponse(content, headers={"Cache-Control": "no-store"})
+
+def _cleanup_unused_images(db: Session, content_json: str):
+    """Delete uploaded images no longer referenced by the saved content.
+    Images uploaded within the last hour are kept, so in-progress edits are never lost."""
+    try:
+        import re, datetime as _dt
+        used_ids = {int(x) for x in re.findall(r"/api/site-images/(\d+)", content_json or "")}
+        cutoff = _dt.datetime.utcnow() - _dt.timedelta(hours=1)
+        q = db.query(models.SiteImage.id).filter(models.SiteImage.created_at < cutoff)
+        stale = [row[0] for row in q.all() if row[0] not in used_ids]
+        if stale:
+            db.query(models.SiteImage).filter(models.SiteImage.id.in_(stale)).delete(synchronize_session=False)
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        print("cleanup images error:", e)
+
+@app.put("/api/site-content")
+def save_site_content(request: Request, payload: dict = Body(...), db: Session = Depends(get_db)):
+    require_admin(request)
+    row = _get_site_row(db)
+    data = json.dumps(payload, ensure_ascii=False)
+    if row:
+        row.data = data
+    else:
+        db.add(models.SiteContent(key="main", data=data))
+    db.commit()
+    _cleanup_unused_images(db, data)
+    return site_defaults.merge_with_defaults(payload)
+
+@app.post("/api/site-content/reset")
+def reset_site_content(request: Request, db: Session = Depends(get_db)):
+    require_admin(request)
+    row = _get_site_row(db)
+    if row:
+        db.delete(row)
+        db.commit()
+    return site_defaults.get_default_content()
+
+@app.post("/api/site-images")
+def upload_site_image(request: Request, payload: dict = Body(...), db: Session = Depends(get_db)):
+    """Accepts {"data_url": "data:image/png;base64,...", "filename": "x.png"}."""
+    require_admin(request)
+    data_url = payload.get("data_url") or ""
+    if not data_url.startswith("data:") or ";base64," not in data_url:
+        raise HTTPException(status_code=400, detail="Invalid image data")
+    header, b64 = data_url.split(";base64,", 1)
+    mime = header[5:].lower()
+    if mime not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Unsupported image type")
+    try:
+        raw = base64.b64decode(b64)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid base64 data")
+    if len(raw) > MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Image is too large (max 4MB)")
+    img = models.SiteImage(filename=(payload.get("filename") or "image")[:200], mime_type=mime, data=raw)
+    db.add(img)
+    db.commit()
+    db.refresh(img)
+    return {"id": img.id, "url": f"/api/site-images/{img.id}"}
+
+@app.get("/api/site-images/{image_id}")
+def get_site_image(image_id: int, db: Session = Depends(get_db)):
+    img = db.query(models.SiteImage).filter(models.SiteImage.id == image_id).first()
+    if not img:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return Response(
+        content=img.data,
+        media_type=img.mime_type or "image/jpeg",
+        headers={"Cache-Control": "public, max-age=31536000, immutable"}
+    )
+
+@app.delete("/api/site-images/{image_id}")
+def delete_site_image(image_id: int, request: Request, db: Session = Depends(get_db)):
+    require_admin(request)
+    img = db.query(models.SiteImage).filter(models.SiteImage.id == image_id).first()
+    if img:
+        db.delete(img)
+        db.commit()
+    return {"ok": True}
+
 
 

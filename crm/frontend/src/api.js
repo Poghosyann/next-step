@@ -7,6 +7,15 @@ const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('crm_token');
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Automatically retry GET requests on transient serverless/network errors
 api.interceptors.response.use(
   (response) => response,

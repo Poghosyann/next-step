@@ -1,7 +1,22 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Table, DateTime, Text, LargeBinary
 from sqlalchemy.orm import relationship
 from database import Base
 import datetime
+
+class SiteContent(Base):
+    __tablename__ = "site_content"
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True)
+    data = Column(Text)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+class SiteImage(Base):
+    __tablename__ = "site_images"
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String)
+    mime_type = Column(String)
+    data = Column(LargeBinary)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Admin(Base):
     __tablename__ = "admins"
