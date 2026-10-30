@@ -187,10 +187,7 @@ DEFAULT_SITE_CONTENT = {
     },
     "footer": {
         "copyright": "© 2026 NEXT-STEP ACADEMY. Բոլոր իրավունքները պաշտպանված են:",
-        "links": [
-            {"label": "Գաղտնիության քաղաքականություն", "href": "#"},
-            {"label": "Պայմաններ և դրույթներ", "href": "#"}
-        ]
+        "links": []
     }
 }
 

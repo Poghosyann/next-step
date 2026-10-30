@@ -8,6 +8,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="styles.css">
+    <script>
+        // Start loading admin-managed content as early as possible; hide the page until it is rendered.
+        document.documentElement.classList.add('cms-loading');
+        window.__siteContentPromise = fetch('/api/site-content', { cache: 'no-store' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .catch(function () { return null; });
+        setTimeout(function () { document.documentElement.classList.remove('cms-loading'); }, 2500);
+    </script>
 </head>
 <body>
 
@@ -294,13 +302,15 @@
     <!-- About Instructor -->
     <section id="instructor" class="instructor-section">
         <div class="container">
-            <div class="instructor-box">
-                <div class="instructor-photo">
-                    <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=500&h=600" alt="Դասավանդող">
-                    <div class="decor-box"></div>
-                </div>
-                <div class="instructor-text">
-                    <h3 class="instructor-name">Անուն Ազգանուն</h3>
+            <div class="instructors-grid" id="instructorsGrid">
+                <div class="instructor-box">
+                    <div class="instructor-photo">
+                        <img src="https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=500&h=600" alt="Դասավանդող">
+                        <div class="decor-box"></div>
+                    </div>
+                    <div class="instructor-text">
+                        <h3 class="instructor-name">Անուն Ազգանուն</h3>
+                    </div>
                 </div>
             </div>
         </div>
@@ -570,10 +580,7 @@
     <footer class="footer">
         <div class="container footer-bottom">
             <p>&copy; 2026 NEXT-STEP ACADEMY. Բոլոր իրավունքները պաշտպանված են:</p>
-            <div class="footer-links">
-                <a href="#">Գաղտնիության քաղաքականություն</a>
-                <a href="#">Պայմաններ և դրույթներ</a>
-            </div>
+            <div class="footer-links" style="display: none;"></div>
         </div>
     </footer>
 

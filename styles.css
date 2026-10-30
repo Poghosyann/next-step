@@ -1331,10 +1331,16 @@ img {
 
 .footer-bottom {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     border-top: 1px solid rgba(255,255,255,0.1);
     padding-top: 20px;
+    text-align: center;
+}
+
+.footer-bottom:has(.footer-links:not([style*="display: none"]):not(:empty)) {
+    justify-content: space-between;
+    text-align: left;
 }
 
 .footer p {

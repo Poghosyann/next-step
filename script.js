@@ -358,10 +358,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (c.footer) {
             setText($('.footer-bottom > p'), c.footer.copyright);
             const links = $('.footer-links');
-            if (links && Array.isArray(c.footer.links)) {
-                links.innerHTML = list(c.footer.links).map(l =>
-                    `<a href="${esc(safeUrl(l.href) || '#')}">${esc(l.label)}</a>`
-                ).join('');
+            if (links) {
+                const linkItems = list(c.footer.links).filter(l => l && l.label && l.label.trim());
+                if (linkItems.length > 0) {
+                    links.style.display = '';
+                    links.innerHTML = linkItems.map(l =>
+                        `<a href="${esc(safeUrl(l.href) || '#')}">${esc(l.label)}</a>`
+                    ).join('');
+                } else {
+                    links.style.display = 'none';
+                    links.innerHTML = '';
+                }
             }
         }
     };

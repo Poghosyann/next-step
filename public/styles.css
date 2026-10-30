@@ -1331,10 +1331,16 @@ img {
 
 .footer-bottom {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     border-top: 1px solid rgba(255,255,255,0.1);
     padding-top: 20px;
+    text-align: center;
+}
+
+.footer-bottom:has(.footer-links:not([style*="display: none"]):not(:empty)) {
+    justify-content: space-between;
+    text-align: left;
 }
 
 .footer p {
@@ -1404,4 +1410,58 @@ img {
     .section-title { font-size: 2rem; }
     .floating-callback-btn span { display: none; }
     .floating-callback-btn { padding: 16px; border-radius: 50%; }
+}
+
+/* ===== CMS (admin-managed content) ===== */
+html.cms-loading body { opacity: 0; }
+body { transition: opacity .25s ease; }
+
+.instructors-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 40px;
+}
+.instructors-grid .instructor-box {
+    margin: 0;
+    flex: 1 1 320px;
+    max-width: 500px;
+    padding: 40px;
+}
+.instructor-role {
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-top: -12px;
+}
+.instructor-bio {
+    font-size: 1rem;
+    line-height: 1.7;
+    white-space: pre-line;
+}
+
+.reviews-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.stats-grid { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+
+.lightbox-video {
+    position: relative;
+    width: 100%;
+    padding-top: 56.25%;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    background: #000;
+}
+.lightbox-video iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+.video-review .video-placeholder { cursor: pointer; }
+.gallery-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 40px 0;
 }
