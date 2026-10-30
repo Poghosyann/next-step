@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Users, BookOpen, GraduationCap, Users2, CreditCard, Settings, AlertCircle, ChevronLeft, ChevronRight, Globe } from 'lucide-react';
+import { Home, Users, BookOpen, GraduationCap, Users2, CreditCard, Settings, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const Sidebar = ({ isCollapsed, toggleSidebar }) => {
   const links = [
@@ -10,7 +10,6 @@ const Sidebar = ({ isCollapsed, toggleSidebar }) => {
     { to: '/courses', label: 'Դասընթացներ', icon: <BookOpen size={20} /> },
     { to: '/instructors', label: 'Դասախոսներ', icon: <GraduationCap size={20} /> },
     { to: '/payments', label: 'Վճարումներ', icon: <CreditCard size={20} /> },
-    { to: '/site', label: 'Կայքի կառավարում', icon: <Globe size={20} /> },
   ];
 
   return (

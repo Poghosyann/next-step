@@ -19,7 +19,7 @@ def init_db_if_needed():
             # Fast path for serverless cold starts: check if schema v5 is already initialized
             db_check = SessionLocal()
             try:
-                if crud.get_admin(db_check, "__schema_v6_ready__"):
+                if crud.get_admin(db_check, "__schema_v7_ready__"):
                     _db_initialized = True
                     return
             except Exception:
@@ -93,6 +93,8 @@ def init_db_if_needed():
             try:
                 if not crud.get_admin(db, "admin"):
                     crud.create_admin(db, "admin", "admin123")
+                if not crud.get_admin(db, "siteadmin"):
+                    crud.create_admin(db, "siteadmin", "siteadmin123")
                 # Normalize legacy student statuses without touching "Անորոշ"
                 try:
                     db.query(models.Student).filter(models.Student.status.ilike("%ընթացիկ%")).update({models.Student.status: "Ընթացիկ"}, synchronize_session=False)
@@ -169,8 +171,8 @@ def init_db_if_needed():
                         {models.Student.preferred_schedule: "Հինգ, Շաբ"}, synchronize_session=False
                     )
 
-                    if not crud.get_admin(db, "__schema_v6_ready__"):
-                        crud.create_admin(db, "__schema_v6_ready__", "done")
+                    if not crud.get_admin(db, "__schema_v7_ready__"):
+                        crud.create_admin(db, "__schema_v7_ready__", "done")
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)
@@ -535,17 +537,37 @@ from fastapi.responses import JSONResponse, Response
 import site_defaults
 
 ADMIN_TOKEN = "fake-jwt-token-123"
+SITE_ADMIN_TOKEN = "site-admin-token-789"
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 def require_admin(request: Request):
     auth = request.headers.get("authorization", "")
     token = auth[7:] if auth.lower().startswith("bearer ") else auth
-    if token != ADMIN_TOKEN:
+    if token not in (ADMIN_TOKEN, SITE_ADMIN_TOKEN):
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 def _get_site_row(db: Session):
     return db.query(models.SiteContent).filter(models.SiteContent.key == "main").first()
+
+
+@app.post("/api/site-admin/login")
+def site_admin_login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
+    admin = crud.get_admin(db, req.username)
+    if admin and admin.password == req.password:
+        return {"token": "site-admin-token-789", "username": admin.username}
+    raise HTTPException(status_code=401, detail="Սխալ մուտքանուն կամ գաղտնաբառ")
+
+@app.put("/api/site-admin/password")
+def change_site_admin_password(request: Request, req: schemas.PasswordChange, db: Session = Depends(get_db)):
+    require_admin(request)
+    admin = crud.get_admin(db, "siteadmin")
+    if not admin:
+        admin = crud.create_admin(db, "siteadmin", "siteadmin123")
+    if admin.password != req.current_password:
+        raise HTTPException(status_code=400, detail="Սխալ ընթացիկ գաղտնաբառ")
+    crud.update_admin_password(db, "siteadmin", req.new_password)
+    return {"ok": True}
 
 @app.get("/api/site-content")
 def get_site_content(db: Session = Depends(get_db)):

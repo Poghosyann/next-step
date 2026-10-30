@@ -38,6 +38,22 @@ try {
   }
   copyDir(path.join(__dirname, 'crm', 'frontend', 'dist'), path.join(__dirname, 'public', 'crm'));
 
+  console.log("Building React Site Admin Panel (/admin)...");
+  if (fs.existsSync(path.join(__dirname, 'admin', 'frontend', 'package-lock.json'))) {
+    fs.unlinkSync(path.join(__dirname, 'admin', 'frontend', 'package-lock.json'));
+  }
+  if (fs.existsSync(path.join(__dirname, 'admin', 'frontend', 'node_modules'))) {
+    fs.rmSync(path.join(__dirname, 'admin', 'frontend', 'node_modules'), { recursive: true, force: true });
+  }
+  execSync('npm install --include=dev', { cwd: path.join(__dirname, 'admin', 'frontend'), stdio: 'inherit' });
+  execSync('npm run build', { cwd: path.join(__dirname, 'admin', 'frontend'), stdio: 'inherit' });
+
+  console.log("Copying Admin build to public/admin...");
+  if (fs.existsSync('public/admin')) {
+    fs.rmSync('public/admin', { recursive: true, force: true });
+  }
+  copyDir(path.join(__dirname, 'admin', 'frontend', 'dist'), path.join(__dirname, 'public', 'admin'));
+
   console.log("Build complete!");
 } catch (error) {
   console.error("Build failed:", error);

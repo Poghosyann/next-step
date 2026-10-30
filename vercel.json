@@ -22,6 +22,10 @@
     {
       "src": "/crm/(.*)",
       "dest": "/crm/index.html"
+    },
+    {
+      "src": "/admin/(.*)",
+      "dest": "/admin/index.html"
     }
   ]
 }

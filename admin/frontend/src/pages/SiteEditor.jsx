@@ -4,11 +4,10 @@ import {
   Save, RotateCcw, ExternalLink, Plus, Trash2, ChevronUp, ChevronDown, Upload, X,
   Image as ImageIcon, Video, Layout, Star, ListChecks, GraduationCap, Grid3x3, Film,
   UserSquare2, BarChart3, MessageSquareQuote, HelpCircle, ClipboardList, Phone, PhoneCall,
-  PanelBottom, Menu, Globe, Loader2
+  PanelBottom, Menu, Globe, Loader2, LogOut, KeyRound
 } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
-// ---------- Helpers ----------
 export const parseYouTubeId = (url) => {
   if (!url) return null;
   const s = String(url).trim();
@@ -33,7 +32,6 @@ const readAsDataURL = (file) => new Promise((resolve, reject) => {
   reader.readAsDataURL(file);
 });
 
-// Downscale large photos in the browser so uploads stay small and fast.
 const prepareImage = async (file, maxDim = 1920) => {
   if (file.type === 'image/gif') return readAsDataURL(file);
   const src = await readAsDataURL(file);
@@ -64,8 +62,6 @@ const ICON_PRESETS = [
   'fa-solid fa-lightbulb', 'fa-solid fa-rocket', 'fa-solid fa-gift', 'fa-solid fa-location-dot'
 ];
 
-// ---------- Section schema ----------
-// Every field/list defined here is editable; lists support add / delete / reorder.
 const SECTIONS = [
   {
     key: 'hero', label: 'Գլխավոր բաժին', icon: Layout,
@@ -282,7 +278,6 @@ const SECTIONS = [
   }
 ];
 
-// ---------- Field components ----------
 const ImageField = ({ value, onChange }) => {
   const { addToast } = useToast();
   const inputRef = useRef(null);
@@ -329,7 +324,7 @@ const ImageField = ({ value, onChange }) => {
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
-            className="px-3 py-1.5 bg-brand/15 hover:bg-brand/25 text-gray-800 border border-brand/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-60 whitespace-nowrap"
+            className="px-3 py-1.5 bg-brand/15 hover:bg-brand/25 text-gray-800 border border-brand/30 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition disabled:opacity-60 whitespace-nowrap cursor-pointer"
           >
             {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
             {uploading ? 'Վերբեռնվում է...' : 'Վերբեռնել նկար'}
@@ -338,7 +333,7 @@ const ImageField = ({ value, onChange }) => {
             <button
               type="button"
               onClick={() => onChange('')}
-              className="px-3 py-1.5 bg-white hover:bg-red-50 text-gray-500 hover:text-red-600 border border-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap"
+              className="px-3 py-1.5 bg-white hover:bg-red-50 text-gray-500 hover:text-red-600 border border-gray-200 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer"
             >
               <X size={14} /> Հեռացնել
             </button>
@@ -407,7 +402,7 @@ const IconField = ({ value, onChange }) => {
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 whitespace-nowrap"
+          className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-50 whitespace-nowrap cursor-pointer"
         >
           {open ? 'Փակել' : 'Ընտրել'}
         </button>
@@ -420,7 +415,7 @@ const IconField = ({ value, onChange }) => {
               type="button"
               title={ic}
               onClick={() => { onChange(ic); setOpen(false); }}
-              className={`h-9 rounded-md flex items-center justify-center transition ${value === ic ? 'bg-brand text-black' : 'bg-white text-gray-600 hover:bg-brand/15 border border-gray-200'}`}
+              className={`h-9 rounded-md flex items-center justify-center transition cursor-pointer ${value === ic ? 'bg-brand text-black' : 'bg-white text-gray-600 hover:bg-brand/15 border border-gray-200'}`}
             >
               <i className={ic} />
             </button>
@@ -496,7 +491,7 @@ const ListEditor = ({ list, items, onChange }) => {
         <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">
           {list.label} <span className="text-gray-400 font-semibold">({safeItems.length})</span>
         </h3>
-        <button type="button" onClick={add} className="glass-button px-3 py-1.5 text-xs flex items-center gap-1.5">
+        <button type="button" onClick={add} className="glass-button px-3 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer">
           <Plus size={14} /> Ավելացնել
         </button>
       </div>
@@ -515,13 +510,13 @@ const ListEditor = ({ list, items, onChange }) => {
                 #{idx + 1} · {(item[list.titleField] || '').toString().slice(0, 70) || `Նոր ${list.itemLabel.toLowerCase()}`}
               </span>
               <div className="flex items-center gap-1 shrink-0">
-                <button type="button" onClick={() => move(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-white disabled:opacity-30" title="Վերև">
+                <button type="button" onClick={() => move(idx, -1)} disabled={idx === 0} className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-white disabled:opacity-30 cursor-pointer" title="Վերև">
                   <ChevronUp size={16} />
                 </button>
-                <button type="button" onClick={() => move(idx, 1)} disabled={idx === safeItems.length - 1} className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-white disabled:opacity-30" title="Ներքև">
+                <button type="button" onClick={() => move(idx, 1)} disabled={idx === safeItems.length - 1} className="p-1.5 rounded-md text-gray-400 hover:text-gray-700 hover:bg-white disabled:opacity-30 cursor-pointer" title="Ներքև">
                   <ChevronDown size={16} />
                 </button>
-                <button type="button" onClick={() => remove(idx)} className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50" title="Ջնջել">
+                <button type="button" onClick={() => remove(idx)} className="p-1.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 cursor-pointer" title="Ջնջել">
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -542,14 +537,21 @@ const ListEditor = ({ list, items, onChange }) => {
   );
 };
 
-// ---------- Page ----------
-const SiteEditor = () => {
+const SiteEditor = ({ onLogout }) => {
   const { addToast } = useToast();
   const [content, setContent] = useState(null);
   const [activeKey, setActiveKey] = useState(SECTIONS[0].key);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState(false);
+
+  // Password change modal state
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -587,7 +589,12 @@ const SiteEditor = () => {
       addToast('Կայքի տվյալները պահպանվեցին', 'success');
     } catch (err) {
       console.error(err);
-      addToast(err.response?.status === 401 ? 'Մուտքի ժամկետը լրացել է, մուտք գործեք կրկին' : 'Սխալ պահպանելիս', 'error');
+      if (err.response?.status === 401) {
+        addToast('Մուտքի ժամկետը լրացել է, մուտք գործեք կրկին', 'error');
+        onLogout();
+      } else {
+        addToast('Սխալ պահպանելիս', 'error');
+      }
     } finally {
       setSaving(false);
     }
@@ -606,99 +613,264 @@ const SiteEditor = () => {
     }
   };
 
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    if (newPassword.length < 6) {
+      setPasswordError('Նոր գաղտնաբառը պետք է լինի առնվազն 6 նիշ');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Գաղտնաբառերը չեն համընկնում');
+      return;
+    }
+    try {
+      setChangingPassword(true);
+      await api.put('/site-admin/password', {
+        current_password: currentPassword,
+        new_password: newPassword
+      });
+      addToast('Գաղտնաբառը հաջողությամբ փոխվեց', 'success');
+      setShowPasswordModal(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setPasswordError(err.response?.data?.detail || 'Սխալ ընթացիկ գաղտնաբառ');
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   const section = SECTIONS.find((s) => s.key === activeKey);
   const sectionData = content?.[activeKey] || {};
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">Կայքի կառավարում</h1>
-          <p className="text-gray-500 text-sm">Խմբագրեք, ավելացրեք կամ ջնջեք հիմնական կայքի ցանկացած տվյալ</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <a href="/" target="_blank" rel="noreferrer" className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 whitespace-nowrap">
-            <ExternalLink size={16} /> Դիտել կայքը
-          </a>
-          <button type="button" onClick={handleReset} disabled={!content} className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-semibold text-gray-500 hover:text-red-600 hover:bg-red-50 flex items-center gap-2 whitespace-nowrap disabled:opacity-50">
-            <RotateCcw size={16} /> Սկզբնական
-          </button>
-          <button type="button" onClick={handleSave} disabled={!content || saving || !dirty} className="glass-button flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed">
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {saving ? 'Պահպանվում է...' : 'Պահպանել'}
-          </button>
-        </div>
-      </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Top Navbar */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand/20 border border-brand text-gray-900 rounded-xl flex items-center justify-center font-black">
+              <Globe size={22} className="text-gray-900" />
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold text-gray-900 leading-tight">
+                Next Step Admin
+              </h1>
+              <p className="text-xs text-gray-400">Կայքի կառավարման վահանակ</p>
+            </div>
+          </div>
 
-      {dirty && (
-        <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 font-medium">
-          Ունեք չպահպանված փոփոխություններ։ Սեղմեք «Պահպանել», որպեսզի դրանք երևան կայքում։
+          <div className="flex items-center gap-2">
+            <a
+              href="/"
+              target="_blank"
+              rel="noreferrer"
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap"
+            >
+              <ExternalLink size={14} /> Դիտել կայքը
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowPasswordModal(true)}
+              className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer"
+              title="Փոխել գաղտնաբառը"
+            >
+              <KeyRound size={14} /> Գաղտնաբառ
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={!content}
+              className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap disabled:opacity-50 cursor-pointer"
+            >
+              <RotateCcw size={14} /> Սկզբնական
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!content || saving || !dirty}
+              className="glass-button px-4 py-1.5 text-xs flex items-center gap-1.5 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {saving ? 'Պահպանվում է...' : 'Պահպանել'}
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              className="p-2 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition ml-1 cursor-pointer"
+              title="Դուրս գալ"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
-      )}
+      </header>
 
-      {loadError ? (
-        <div className="glass-panel p-10 text-center">
-          <p className="text-gray-500 mb-4">Չհաջողվեց բեռնել կայքի տվյալները</p>
-          <button type="button" onClick={load} className="glass-button px-6 py-2 text-sm">Կրկին փորձել</button>
-        </div>
-      ) : (
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          {/* Section nav */}
-          <nav className="glass-panel p-2 w-full lg:w-64 shrink-0 lg:sticky lg:top-6">
-            {SECTIONS.map((s) => {
-              const Icon = s.icon;
-              const active = s.key === activeKey;
-              return (
-                <button
-                  key={s.key}
-                  type="button"
-                  onClick={() => setActiveKey(s.key)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition whitespace-nowrap ${active ? 'bg-brand/15 text-gray-900 font-bold border border-brand/30' : 'text-gray-600 hover:bg-gray-50 border border-transparent'}`}
-                >
-                  <Icon size={16} className={active ? 'text-brand' : 'text-gray-400'} />
-                  {s.label}
-                </button>
-              );
-            })}
-          </nav>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 flex-1">
+        {dirty && (
+          <div className="mb-4 px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-800 font-medium flex items-center justify-between">
+            <span>Ունեք չպահպանված փոփոխություններ։ Սեղմեք «Պահպանել», որպեսզի դրանք երևան կայքում։</span>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving}
+              className="px-3 py-1 bg-amber-600 text-white rounded-lg text-xs font-bold hover:bg-amber-700 transition cursor-pointer"
+            >
+              Պահպանել հիմա
+            </button>
+          </div>
+        )}
 
-          {/* Editor */}
-          <div className="glass-panel p-6 flex-1 min-w-0 w-full">
-            {!content ? (
-              <div className="animate-pulse space-y-4">
-                <div className="h-6 w-48 bg-gray-200 rounded" />
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="space-y-2">
-                    <div className="h-3 w-32 bg-gray-200 rounded" />
-                    <div className="h-10 w-full bg-gray-100 rounded-lg" />
-                  </div>
-                ))}
+        {loadError ? (
+          <div className="glass-panel p-10 text-center">
+            <p className="text-gray-500 mb-4">Չհաջողվեց բեռնել կայքի տվյալները</p>
+            <button type="button" onClick={load} className="glass-button px-6 py-2 text-sm cursor-pointer">
+              Կրկին փորձել
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-6 items-start">
+            {/* Section nav */}
+            <nav className="glass-panel p-2 w-full lg:w-64 shrink-0 lg:sticky lg:top-20">
+              {SECTIONS.map((s) => {
+                const Icon = s.icon;
+                const active = s.key === activeKey;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => setActiveKey(s.key)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-left transition whitespace-nowrap cursor-pointer ${
+                      active
+                        ? 'bg-brand/15 text-gray-900 font-bold border border-brand/30'
+                        : 'text-gray-600 hover:bg-gray-50 border border-transparent'
+                    }`}
+                  >
+                    <Icon size={16} className={active ? 'text-brand' : 'text-gray-400'} />
+                    {s.label}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Editor */}
+            <div className="glass-panel p-6 flex-1 min-w-0 w-full">
+              {!content ? (
+                <div className="animate-pulse space-y-4">
+                  <div className="h-6 w-48 bg-gray-200 rounded" />
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <div className="h-3 w-32 bg-gray-200 rounded" />
+                      <div className="h-10 w-full bg-gray-100 rounded-lg" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2">
+                    <section.icon size={20} className="text-brand" /> {section.label}
+                  </h2>
+                  {section.fields && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {section.fields.map((f) => (
+                        <div key={f.name} className={['textarea', 'image', 'youtube', 'icon'].includes(f.type) ? 'md:col-span-2' : ''}>
+                          <Field field={f} value={sectionData[f.name]} onChange={(v) => updateSection(activeKey, f.name, v)} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {(section.lists || []).map((list) => (
+                    <ListEditor
+                      key={list.name}
+                      list={list}
+                      items={sectionData[list.name]}
+                      onChange={(items) => updateSection(activeKey, list.name, items)}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Change Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <KeyRound size={20} className="text-brand" /> Փոխել գաղտնաբառը
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className="text-gray-400 hover:text-gray-600 p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {passwordError && (
+              <div className="bg-rose-50 text-rose-700 p-3 rounded-lg mb-4 text-xs font-medium border border-rose-200">
+                {passwordError}
               </div>
-            ) : (
-              <>
-                <h2 className="text-xl font-bold text-gray-800 mb-5 flex items-center gap-2">
-                  <section.icon size={20} className="text-brand" /> {section.label}
-                </h2>
-                {section.fields && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {section.fields.map((f) => (
-                      <div key={f.name} className={['textarea', 'image', 'youtube', 'icon'].includes(f.type) ? 'md:col-span-2' : ''}>
-                        <Field field={f} value={sectionData[f.name]} onChange={(v) => updateSection(activeKey, f.name, v)} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {(section.lists || []).map((list) => (
-                  <ListEditor
-                    key={list.name}
-                    list={list}
-                    items={sectionData[list.name]}
-                    onChange={(items) => updateSection(activeKey, list.name, items)}
-                  />
-                ))}
-              </>
             )}
+
+            <form onSubmit={handleChangePassword} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Ընթացիկ գաղտնաբառ</label>
+                <input
+                  type="password"
+                  required
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="glass-input w-full text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Նոր գաղտնաբառ (առնվազն 6 նիշ)</label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="glass-input w-full text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Կրկնել նոր գաղտնաբառը</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="glass-input w-full text-sm"
+                  placeholder="••••••••"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-bold transition cursor-pointer"
+                >
+                  Չեղարկել
+                </button>
+                <button
+                  type="submit"
+                  disabled={changingPassword}
+                  className="glass-button px-5 py-2 text-xs cursor-pointer"
+                >
+                  {changingPassword ? 'Փոխվում է...' : 'Պահպանել նոր գաղտնաբառը'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

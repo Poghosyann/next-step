@@ -12,7 +12,6 @@ import StudentForm from './pages/StudentForm';
 import Debts from './pages/Debts';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
-import SiteEditor from './pages/SiteEditor';
 import { ToastProvider } from './context/ToastContext';
 
 function App() {
@@ -67,7 +66,6 @@ function App() {
               <Route path="/groups" element={<Groups />} />
               <Route path="/payments" element={<Payments />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/site" element={<SiteEditor />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </main>

@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(229, 231, 235, 0.8);
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  }
+  
+  .glass-input {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.625rem 0.875rem;
+    color: #1f2937;
+    transition: all 0.2s ease;
+  }
+  
+  .glass-input:focus {
+    outline: none;
+    border-color: #f3b01b;
+    box-shadow: 0 0 0 2px rgba(243, 176, 27, 0.2);
+  }
+
+  .glass-button {
+    background: #f3b01b;
+    color: #000000;
+    font-weight: 700;
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(243, 176, 27, 0.2);
+  }
+
+  .glass-button:hover {
+    background: #df9e10;
+    box-shadow: 0 4px 8px rgba(243, 176, 27, 0.3);
+  }
+}
