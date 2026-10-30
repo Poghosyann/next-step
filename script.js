@@ -359,7 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
             setText($('.footer-bottom > p'), c.footer.copyright);
             const links = $('.footer-links');
             if (links) {
-                const linkItems = list(c.footer.links).filter(l => l && l.label && l.label.trim());
+                const linkItems = list(c.footer.links).filter(l =>
+                    l && l.label && l.label.trim() &&
+                    !/գաղտնի|պայման|privacy|term/i.test(l.label)
+                );
                 if (linkItems.length > 0) {
                     links.style.display = '';
                     links.innerHTML = linkItems.map(l =>

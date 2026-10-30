@@ -569,13 +569,30 @@ def change_site_admin_password(request: Request, req: schemas.PasswordChange, db
     crud.update_admin_password(db, "siteadmin", req.new_password)
     return {"ok": True}
 
+def _clean_site_data(d: dict) -> dict:
+    if not isinstance(d, dict):
+        return d
+    footer = d.get('footer')
+    if isinstance(footer, dict) and 'links' in footer and isinstance(footer['links'], list):
+        footer['links'] = [
+            l for l in footer['links']
+            if isinstance(l, dict) and not any(k in str(l.get('label', '')).lower() for k in ('գաղտնի', 'պայման', 'privacy', 'term'))
+        ]
+    return d
+
 @app.get("/api/site-content")
 def get_site_content(db: Session = Depends(get_db)):
     content = site_defaults.get_default_content()
     try:
         row = _get_site_row(db)
         if row and row.data:
-            content = site_defaults.merge_with_defaults(json.loads(row.data))
+            loaded = json.loads(row.data)
+            _clean_site_data(loaded)
+            content = site_defaults.merge_with_defaults(loaded)
+            cleaned_json = json.dumps(loaded, ensure_ascii=False)
+            if cleaned_json != row.data:
+                row.data = cleaned_json
+                db.commit()
     except Exception as e:
         print("get_site_content error:", e)
     return JSONResponse(content, headers={"Cache-Control": "no-store"})
@@ -599,6 +616,7 @@ def _cleanup_unused_images(db: Session, content_json: str):
 @app.put("/api/site-content")
 def save_site_content(request: Request, payload: dict = Body(...), db: Session = Depends(get_db)):
     require_admin(request)
+    _clean_site_data(payload)
     row = _get_site_row(db)
     data = json.dumps(payload, ensure_ascii=False)
     if row:
