@@ -726,15 +726,6 @@ def save_site_content(request: Request, payload: dict = Body(...), db: Session =
     _cleanup_unused_images(db, data)
     return site_defaults.merge_with_defaults(payload)
 
-@app.post("/api/site-content/reset")
-def reset_site_content(request: Request, db: Session = Depends(get_db)):
-    require_admin(request)
-    row = _get_site_row(db)
-    if row:
-        db.delete(row)
-        db.commit()
-    return site_defaults.get_default_content()
-
 @app.post("/api/site-images")
 def upload_site_image(request: Request, payload: dict = Body(...), db: Session = Depends(get_db)):
     """Accepts {"data_url": "data:image/png;base64,...", "filename": "x.png"}."""

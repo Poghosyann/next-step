@@ -600,19 +600,6 @@ const SiteEditor = ({ onLogout }) => {
     }
   };
 
-  const handleReset = async () => {
-    if (!window.confirm('Վերականգնե՞լ կայքի սկզբնական բովանդակությունը։ Բոլոր փոփոխությունները կջնջվեն։')) return;
-    try {
-      const res = await api.post('/site-content/reset');
-      setContent(res.data);
-      setDirty(false);
-      addToast('Սկզբնական բովանդակությունը վերականգնվեց', 'success');
-    } catch (err) {
-      console.error(err);
-      addToast('Սխալ վերականգնելիս', 'error');
-    }
-  };
-
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setPasswordError('');
@@ -678,14 +665,6 @@ const SiteEditor = ({ onLogout }) => {
               title="Փոխել գաղտնաբառը"
             >
               <KeyRound size={14} /> Գաղտնաբառ
-            </button>
-            <button
-              type="button"
-              onClick={handleReset}
-              disabled={!content}
-              className="px-3 py-1.5 bg-white border border-gray-200 hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition whitespace-nowrap disabled:opacity-50 cursor-pointer"
-            >
-              <RotateCcw size={14} /> Սկզբնական
             </button>
             <button
               type="button"
