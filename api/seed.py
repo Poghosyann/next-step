@@ -31,9 +31,9 @@ def seed(force_reset: bool = False):
             db.rollback()
             print("Clear error:", clear_err)
 
-        # Ensure admin exists
-        if not crud.get_admin(db, "admin"):
-            crud.create_admin(db, "admin", "admin123")
+        # Ensure crm_manager exists
+        if not crud.get_admin(db, "crm_manager"):
+            crud.create_admin(db, "crm_manager", "pbkdf2_sha256$200000$1b8e0355b2e7311f9957fedb4f82e3eb$df75700dafb69909d8310e866dc07c2e59b41fd2d295eadc55d74ce23f1a7b87")
 
         today = datetime.date.today()
         today_str = str(today)

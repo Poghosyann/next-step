@@ -32,13 +32,16 @@ try {
   execSync('npm install --include=dev', { cwd: path.join(__dirname, 'crm', 'frontend'), stdio: 'inherit' });
   execSync('npm run build', { cwd: path.join(__dirname, 'crm', 'frontend'), stdio: 'inherit' });
 
-  console.log("Copying React build to public/crm...");
+  console.log("Copying React build to public/academy-portal...");
   if (fs.existsSync('public/crm')) {
     fs.rmSync('public/crm', { recursive: true, force: true });
   }
-  copyDir(path.join(__dirname, 'crm', 'frontend', 'dist'), path.join(__dirname, 'public', 'crm'));
+  if (fs.existsSync('public/academy-portal')) {
+    fs.rmSync('public/academy-portal', { recursive: true, force: true });
+  }
+  copyDir(path.join(__dirname, 'crm', 'frontend', 'dist'), path.join(__dirname, 'public', 'academy-portal'));
 
-  console.log("Building React Site Admin Panel (/admin)...");
+  console.log("Building React Site Admin Panel (/ns-manage-site)...");
   if (fs.existsSync(path.join(__dirname, 'admin', 'frontend', 'package-lock.json'))) {
     fs.unlinkSync(path.join(__dirname, 'admin', 'frontend', 'package-lock.json'));
   }
@@ -48,11 +51,14 @@ try {
   execSync('npm install --include=dev', { cwd: path.join(__dirname, 'admin', 'frontend'), stdio: 'inherit' });
   execSync('npm run build', { cwd: path.join(__dirname, 'admin', 'frontend'), stdio: 'inherit' });
 
-  console.log("Copying Admin build to public/admin...");
+  console.log("Copying Admin build to public/ns-manage-site...");
   if (fs.existsSync('public/admin')) {
     fs.rmSync('public/admin', { recursive: true, force: true });
   }
-  copyDir(path.join(__dirname, 'admin', 'frontend', 'dist'), path.join(__dirname, 'public', 'admin'));
+  if (fs.existsSync('public/ns-manage-site')) {
+    fs.rmSync('public/ns-manage-site', { recursive: true, force: true });
+  }
+  copyDir(path.join(__dirname, 'admin', 'frontend', 'dist'), path.join(__dirname, 'public', 'ns-manage-site'));
 
   console.log("Build complete!");
 } catch (error) {

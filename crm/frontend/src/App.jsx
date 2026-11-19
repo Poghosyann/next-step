@@ -17,6 +17,7 @@ import { ToastProvider } from './context/ToastContext';
 function App() {
 
   const [isAuth, setIsAuth] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     return localStorage.getItem('crm_sidebar_collapsed') === 'true';
   });
@@ -31,15 +32,41 @@ function App() {
 
   useEffect(() => {
     const token = localStorage.getItem('crm_token');
-    if (token) {
-      setIsAuth(true);
+    if (!token) {
+      setCheckingAuth(false);
+      return;
     }
+    fetch('/api/auth/verify', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => {
+        if (res.ok) {
+          setIsAuth(true);
+        } else {
+          localStorage.removeItem('crm_token');
+          setIsAuth(false);
+        }
+      })
+      .catch(() => {
+        setIsAuth(true);
+      })
+      .finally(() => {
+        setCheckingAuth(false);
+      });
   }, []);
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   if (!isAuth) {
     return (
       <ToastProvider>
-        <Router basename="/crm">
+        <Router basename="/academy-portal">
           <Routes>
             <Route path="*" element={<Login setAuth={setIsAuth} />} />
           </Routes>
@@ -50,7 +77,7 @@ function App() {
 
   return (
     <ToastProvider>
-      <Router basename="/crm">
+      <Router basename="/academy-portal">
         <div className="flex min-h-screen bg-gray-50/50">
           <Sidebar isCollapsed={isSidebarCollapsed} toggleSidebar={toggleSidebar} />
           <main className="flex-1 overflow-x-auto min-w-0">

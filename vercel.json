@@ -20,12 +20,12 @@
     },
     { "handle": "filesystem" },
     {
-      "src": "/crm/(.*)",
-      "dest": "/crm/index.html"
+      "src": "/academy-portal/(.*)",
+      "dest": "/academy-portal/index.html"
     },
     {
-      "src": "/admin/(.*)",
-      "dest": "/admin/index.html"
+      "src": "/ns-manage-site/(.*)",
+      "dest": "/ns-manage-site/index.html"
     }
   ]
 }

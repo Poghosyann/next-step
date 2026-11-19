@@ -1,14 +1,43 @@
 from sqlalchemy.orm import Session, selectinload, joinedload
+import hashlib
+import hmac
+import secrets
 import models, schemas
 
 # ============
-# Admin
+# Admin & Password Security
 # ============
+def hash_password(password: str) -> str:
+    if not password or password.startswith("pbkdf2_sha256$"):
+        return password
+    salt = secrets.token_hex(16)
+    iterations = 200000
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations).hex()
+    return f"pbkdf2_sha256${iterations}${salt}${dk}"
+
+def verify_password(plain_password: str, stored_password: str) -> bool:
+    if not plain_password or not stored_password:
+        return False
+    if stored_password.startswith("pbkdf2_sha256$"):
+        try:
+            _, iter_str, salt, expected_hex = stored_password.split("$", 3)
+            dk = hashlib.pbkdf2_hmac(
+                "sha256",
+                plain_password.encode("utf-8"),
+                salt.encode("utf-8"),
+                int(iter_str)
+            ).hex()
+            return hmac.compare_digest(dk, expected_hex)
+        except Exception:
+            return False
+    return hmac.compare_digest(plain_password, stored_password)
+
 def get_admin(db: Session, username: str):
     return db.query(models.Admin).filter(models.Admin.username == username).first()
 
 def create_admin(db: Session, username: str, password: str):
-    db_admin = models.Admin(username=username, password=password)
+    stored_pw = password if username.startswith("__") else hash_password(password)
+    db_admin = models.Admin(username=username, password=stored_pw)
     db.add(db_admin)
     db.commit()
     db.refresh(db_admin)
@@ -17,7 +46,7 @@ def create_admin(db: Session, username: str, password: str):
 def update_admin_password(db: Session, username: str, new_password: str):
     admin = get_admin(db, username)
     if admin:
-        admin.password = new_password
+        admin.password = hash_password(new_password)
         db.commit()
         db.refresh(admin)
         return admin

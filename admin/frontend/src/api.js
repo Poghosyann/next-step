@@ -20,6 +20,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config;
+    if (error.response && error.response.status === 401 && !config?.url?.includes('/site-admin/login')) {
+      localStorage.removeItem('site_admin_token');
+      localStorage.removeItem('site_admin_user');
+      return Promise.reject(error);
+    }
     if (
       config &&
       config.method === 'get' &&

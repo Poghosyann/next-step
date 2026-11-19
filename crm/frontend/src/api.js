@@ -21,6 +21,11 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const config = error.config;
+    if (error.response && error.response.status === 401 && !config?.url?.includes('/login')) {
+      localStorage.removeItem('crm_token');
+      window.location.reload();
+      return Promise.reject(error);
+    }
     if (
       config &&
       config.method === 'get' &&

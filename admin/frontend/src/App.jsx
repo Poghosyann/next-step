@@ -9,10 +9,28 @@ function App() {
 
   useEffect(() => {
     const token = localStorage.getItem('site_admin_token');
-    if (token) {
-      setIsAuth(true);
+    if (!token) {
+      setChecking(false);
+      return;
     }
-    setChecking(false);
+    fetch('/api/site-admin/verify', {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then((res) => {
+        if (res.ok) {
+          setIsAuth(true);
+        } else {
+          localStorage.removeItem('site_admin_token');
+          localStorage.removeItem('site_admin_user');
+          setIsAuth(false);
+        }
+      })
+      .catch(() => {
+        setIsAuth(true);
+      })
+      .finally(() => {
+        setChecking(false);
+      });
   }, []);
 
   const handleLogout = () => {

@@ -18,7 +18,7 @@ const Login = ({ setAuth }) => {
         navigate('/');
       }
     } catch (err) {
-      setError('Սխալ մուտքանուն կամ գաղտնաբառ');
+      setError(err.response?.data?.detail || 'Սխալ մուտքանուն կամ գաղտնաբառ');
     }
   };
 

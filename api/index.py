@@ -1,25 +1,103 @@
 import sys
 import os
+import time
+import hmac
+import hashlib
+import base64
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import models, schemas, crud
 from database import engine, get_db, SQLALCHEMY_DATABASE_URL, SessionLocal
 import seed
 
-app = FastAPI(title="CRM API")
+app = FastAPI(title="CRM API", docs_url=None, redoc_url=None, openapi_url=None)
+
+CRM_ADMIN_USERNAME = "crm_manager"
+SITE_ADMIN_USERNAME = "website_manager"
+INITIAL_PASSWORD_HASH = "pbkdf2_sha256$200000$1b8e0355b2e7311f9957fedb4f82e3eb$df75700dafb69909d8310e866dc07c2e59b41fd2d295eadc55d74ce23f1a7b87"
+TOKEN_TTL_SECONDS = 86400  # 24 hours
+_AUTH_SECRET = (os.environ.get("AUTH_SECRET_KEY") or f"nsp-sec-2026::{SQLALCHEMY_DATABASE_URL}").encode("utf-8")
+
+_login_attempts: dict[str, list[float]] = {}
+MAX_LOGIN_ATTEMPTS = 5
+LOCKOUT_SECONDS = 900  # 15 minutes
+
+def _get_client_ip(request: Request) -> str:
+    xff = request.headers.get("x-forwarded-for", "")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+def _check_rate_limit(request: Request):
+    ip = _get_client_ip(request)
+    now = time.time()
+    attempts = [t for t in _login_attempts.get(ip, []) if now - t < LOCKOUT_SECONDS]
+    _login_attempts[ip] = attempts
+    if len(attempts) >= MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail="Չափազանց շատ սխալ մուտքի փորձեր։ Խնդրում ենք փորձել 15 րոպեից։"
+        )
+
+def _record_failed_login(request: Request):
+    ip = _get_client_ip(request)
+    now = time.time()
+    attempts = [t for t in _login_attempts.get(ip, []) if now - t < LOCKOUT_SECONDS]
+    attempts.append(now)
+    _login_attempts[ip] = attempts
+
+def _clear_login_attempts(request: Request):
+    ip = _get_client_ip(request)
+    _login_attempts.pop(ip, None)
+
+def create_auth_token(username: str, role: str) -> str:
+    exp = int(time.time()) + TOKEN_TTL_SECONDS
+    raw = f"{username}|{role}|{exp}".encode("utf-8")
+    b64 = base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+    sig = hmac.new(_AUTH_SECRET, b64.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{b64}.{sig}"
+
+def verify_auth_token(token: str, required_role: str) -> str:
+    if not token or "." not in token:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    try:
+        b64, sig = token.split(".", 1)
+        expected_sig = hmac.new(_AUTH_SECRET, b64.encode("utf-8"), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(sig, expected_sig):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        pad = "=" * ((4 - len(b64) % 4) % 4)
+        decoded = base64.urlsafe_b64decode((b64 + pad).encode("utf-8")).decode("utf-8")
+        username, role, exp_str = decoded.split("|", 2)
+        if username.startswith("__") or role != required_role or int(exp_str) < int(time.time()):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+        return username
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+def _extract_bearer_token(request: Request) -> str:
+    auth = request.headers.get("authorization", "")
+    return auth[7:].strip() if auth.lower().startswith("bearer ") else auth.strip()
+
+def require_crm_admin(request: Request) -> str:
+    return verify_auth_token(_extract_bearer_token(request), "crm")
+
+def require_site_admin(request: Request) -> str:
+    return verify_auth_token(_extract_bearer_token(request), "site")
 
 _db_initialized = False
 def init_db_if_needed():
     global _db_initialized
     if not _db_initialized:
         try:
-            # Fast path for serverless cold starts: check if schema v5 is already initialized
+            # Fast path for serverless cold starts: check if schema v8 is already initialized
             db_check = SessionLocal()
             try:
-                if crud.get_admin(db_check, "__schema_v7_ready__"):
+                if crud.get_admin(db_check, "__schema_v8_security_ready__"):
                     _db_initialized = True
                     return
             except Exception:
@@ -91,10 +169,23 @@ def init_db_if_needed():
                 print("Seed error:", e)
             db = SessionLocal()
             try:
-                if not crud.get_admin(db, "admin"):
-                    crud.create_admin(db, "admin", "admin123")
-                if not crud.get_admin(db, "siteadmin"):
-                    crud.create_admin(db, "siteadmin", "siteadmin123")
+                if not crud.get_admin(db, "__schema_v8_security_ready__"):
+                    db.query(models.Admin).filter(
+                        models.Admin.username.in_(["admin", "siteadmin"])
+                    ).delete(synchronize_session=False)
+                    db.commit()
+                    for uname in (CRM_ADMIN_USERNAME, SITE_ADMIN_USERNAME):
+                        existing_adm = crud.get_admin(db, uname)
+                        if existing_adm:
+                            existing_adm.password = INITIAL_PASSWORD_HASH
+                            db.commit()
+                        else:
+                            crud.create_admin(db, uname, INITIAL_PASSWORD_HASH)
+                else:
+                    if not crud.get_admin(db, CRM_ADMIN_USERNAME):
+                        crud.create_admin(db, CRM_ADMIN_USERNAME, INITIAL_PASSWORD_HASH)
+                    if not crud.get_admin(db, SITE_ADMIN_USERNAME):
+                        crud.create_admin(db, SITE_ADMIN_USERNAME, INITIAL_PASSWORD_HASH)
                 # Normalize legacy student statuses without touching "Անորոշ"
                 try:
                     db.query(models.Student).filter(models.Student.status.ilike("%ընթացիկ%")).update({models.Student.status: "Ընթացիկ"}, synchronize_session=False)
@@ -171,8 +262,8 @@ def init_db_if_needed():
                         {models.Student.preferred_schedule: "Հինգ, Շաբ"}, synchronize_session=False
                     )
 
-                    if not crud.get_admin(db, "__schema_v7_ready__"):
-                        crud.create_admin(db, "__schema_v7_ready__", "done")
+                    if not crud.get_admin(db, "__schema_v8_security_ready__"):
+                        crud.create_admin(db, "__schema_v8_security_ready__", "done")
                     db.commit()
                 except Exception as ne:
                     print("Status normalize error:", ne)
@@ -184,13 +275,19 @@ def init_db_if_needed():
             print("DB Init Error:", e)
         _db_initialized = True
 
-# Allow requests from the frontend SPA and landing page
+# Allow requests from the official domain and preview deployments
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict this!
+    allow_origins=[
+        "https://nextsteps.am",
+        "https://www.nextsteps.am",
+        "http://localhost:5173",
+        "http://localhost:3000",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 @app.middleware("http")
@@ -200,32 +297,30 @@ async def db_init_middleware(request, call_next):
     return response
 
 @app.post("/api/login")
-def login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
-    admin = crud.get_admin(db, req.username)
-    if admin and admin.password == req.password:
-        return {"token": "fake-jwt-token-123"}
-    raise HTTPException(status_code=401, detail="Invalid credentials")
+def login(request: Request, req: schemas.LoginRequest, db: Session = Depends(get_db)):
+    _check_rate_limit(request)
+    if req.username == CRM_ADMIN_USERNAME and not req.username.startswith("__"):
+        admin = crud.get_admin(db, CRM_ADMIN_USERNAME)
+        if admin and crud.verify_password(req.password, admin.password):
+            _clear_login_attempts(request)
+            return {"token": create_auth_token(CRM_ADMIN_USERNAME, "crm"), "username": CRM_ADMIN_USERNAME}
+    _record_failed_login(request)
+    raise HTTPException(status_code=401, detail="Սխալ մուտքանուն կամ գաղտնաբառ")
 
-@app.get("/api/debug-db")
-def debug_db():
-    try:
-        with engine.connect() as conn:
-            import sqlalchemy
-            result = conn.execute(sqlalchemy.text("SELECT 1")).fetchone()
-            return {"status": "connected", "result": result[0], "url": SQLALCHEMY_DATABASE_URL[:20] + "..."}
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
+@app.get("/api/auth/verify")
+def verify_crm_session(_admin: str = Depends(require_crm_admin)):
+    return {"ok": True, "username": _admin}
 
 @app.put("/api/settings/password")
-def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db)):
-    admin = crud.get_admin(db, "admin")
-    if admin and admin.password == req.current_password:
-        crud.update_admin_password(db, "admin", req.new_password)
+def change_password(req: schemas.PasswordChange, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
+    admin = crud.get_admin(db, CRM_ADMIN_USERNAME)
+    if admin and crud.verify_password(req.current_password, admin.password):
+        crud.update_admin_password(db, CRM_ADMIN_USERNAME, req.new_password)
         return {"ok": True}
-    raise HTTPException(status_code=400, detail="Invalid current password")
+    raise HTTPException(status_code=400, detail="Սխալ ընթացիկ գաղտնաբառ")
 
 @app.get("/api/stats")
-def get_stats(db: Session = Depends(get_db)):
+def get_stats(db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     import datetime
     from sqlalchemy import func, or_
     non_deleted_student_filter = [
@@ -314,7 +409,8 @@ def read_students(
     status: Optional[str] = None,
     course_direction: Optional[str] = None,
     group_id: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     return crud.get_students(
         db,
@@ -327,21 +423,21 @@ def read_students(
     )
 
 @app.get("/api/students/{student_id}", response_model=schemas.Student)
-def read_student(student_id: int, db: Session = Depends(get_db)):
+def read_student(student_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     student = crud.get_student(db, student_id=student_id)
     if not student:
         raise HTTPException(status_code=404, detail="Student not found")
     return student
 
 @app.delete("/api/students/{student_id}")
-def delete_student(student_id: int, db: Session = Depends(get_db)):
+def delete_student(student_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     deleted = crud.delete_student(db, student_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Student not found")
     return {"ok": True}
 
 @app.put("/api/students/{student_id}", response_model=schemas.Student)
-def update_student(student_id: int, student: schemas.StudentUpdate, db: Session = Depends(get_db)):
+def update_student(student_id: int, student: schemas.StudentUpdate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     updated = crud.update_student(db, student_id, student)
     if not updated:
         raise HTTPException(status_code=404, detail="Student not found")
@@ -352,7 +448,8 @@ def update_student_group_offset_endpoint(
     student_id: int,
     group_id: int,
     payload: schemas.StudentGroupOffsetUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     updated = crud.update_student_group_offset(
         db,
@@ -369,7 +466,8 @@ def update_student_group_offset_endpoint(
 def update_student_lessons_endpoint(
     student_id: int,
     payload: schemas.StudentGroupOffsetUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     target = payload.attended_lessons if payload.attended_lessons is not None else (payload.initial_lessons or 0)
     updated = crud.update_student_total_lessons(db, student_id, target)
@@ -378,22 +476,22 @@ def update_student_lessons_endpoint(
     return updated
 
 @app.get("/api/payments", response_model=list[schemas.Payment])
-def read_payments(skip: int = 0, limit: int = 500, db: Session = Depends(get_db)):
+def read_payments(skip: int = 0, limit: int = 500, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.get_payments(db, skip=skip, limit=limit)
 
 @app.post("/api/payments", response_model=schemas.Payment)
-def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db)):
+def create_payment(payment: schemas.PaymentCreate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.create_payment(db=db, payment=payment)
 
 @app.put("/api/payments/{payment_id}", response_model=schemas.Payment)
-def update_payment(payment_id: int, payment: schemas.PaymentUpdate, db: Session = Depends(get_db)):
+def update_payment(payment_id: int, payment: schemas.PaymentUpdate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     updated = crud.update_payment(db, payment_id, payment)
     if not updated:
         raise HTTPException(status_code=404, detail="Payment not found")
     return updated
 
 @app.delete("/api/payments/{payment_id}")
-def delete_payment(payment_id: int, db: Session = Depends(get_db)):
+def delete_payment(payment_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     deleted = crud.delete_payment(db, payment_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Payment not found")
@@ -401,29 +499,29 @@ def delete_payment(payment_id: int, db: Session = Depends(get_db)):
 
 
 @app.post("/api/courses", response_model=schemas.Course)
-def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db)):
+def create_course(course: schemas.CourseCreate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.create_course(db=db, course=course)
 
 @app.get("/api/courses", response_model=list[schemas.Course])
-def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+def read_courses(skip: int = 0, limit: int = 100, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.get_courses(db, skip=skip, limit=limit)
 
 @app.put("/api/courses/{course_id}", response_model=schemas.Course)
-def update_course(course_id: int, course: schemas.CourseUpdate, db: Session = Depends(get_db)):
+def update_course(course_id: int, course: schemas.CourseUpdate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     updated = crud.update_course(db, course_id, course)
     if not updated:
         raise HTTPException(status_code=404, detail="Course not found")
     return updated
 
 @app.delete("/api/courses/{course_id}")
-def delete_course(course_id: int, db: Session = Depends(get_db)):
+def delete_course(course_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     deleted = crud.delete_course(db, course_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Course not found")
     return {"ok": True}
 
 @app.post("/api/instructors", response_model=schemas.Instructor)
-def create_instructor(instructor: schemas.InstructorCreate, db: Session = Depends(get_db)):
+def create_instructor(instructor: schemas.InstructorCreate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.create_instructor(db=db, instructor=instructor)
 
 @app.get("/api/instructors", response_model=list[schemas.Instructor])
@@ -432,12 +530,13 @@ def read_instructors(
     limit: int = 100,
     include_deleted: bool = False,
     month: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     return crud.get_instructors(db, skip=skip, limit=limit, include_deleted=include_deleted, month=month)
 
 @app.put("/api/instructors/{instructor_id}", response_model=schemas.Instructor)
-def update_instructor(instructor_id: int, instructor: schemas.InstructorUpdate, db: Session = Depends(get_db)):
+def update_instructor(instructor_id: int, instructor: schemas.InstructorUpdate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     updated = crud.update_instructor(db, instructor_id, instructor)
     if not updated:
         raise HTTPException(status_code=404, detail="Instructor not found")
@@ -447,7 +546,8 @@ def update_instructor(instructor_id: int, instructor: schemas.InstructorUpdate, 
 def update_instructor_lessons_endpoint(
     instructor_id: int,
     payload: schemas.StudentGroupOffsetUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     target = payload.attended_lessons if payload.attended_lessons is not None else (payload.initial_lessons or 0)
     updated = crud.update_instructor_lessons(db, instructor_id, target)
@@ -456,50 +556,50 @@ def update_instructor_lessons_endpoint(
     return updated
 
 @app.delete("/api/instructors/{instructor_id}")
-def delete_instructor(instructor_id: int, db: Session = Depends(get_db)):
+def delete_instructor(instructor_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     deleted = crud.delete_instructor(db, instructor_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Instructor not found")
     return {"ok": True}
 
 @app.post("/api/groups", response_model=schemas.Group)
-def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db)):
+def create_group(group: schemas.GroupCreate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.create_group(db=db, group=group)
 
 @app.get("/api/groups", response_model=list[schemas.Group])
-def read_groups(skip: int = 0, limit: int = 100, include_deleted: bool = False, db: Session = Depends(get_db)):
+def read_groups(skip: int = 0, limit: int = 100, include_deleted: bool = False, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     return crud.get_groups(db, skip=skip, limit=limit, include_deleted=include_deleted)
 
 @app.put("/api/groups/{group_id}", response_model=schemas.Group)
-def update_group(group_id: int, group: schemas.GroupUpdate, db: Session = Depends(get_db)):
+def update_group(group_id: int, group: schemas.GroupUpdate, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     updated = crud.update_group(db, group_id, group)
     if not updated:
         raise HTTPException(status_code=404, detail="Group not found")
     return updated
 
 @app.delete("/api/groups/{group_id}")
-def delete_group(group_id: int, db: Session = Depends(get_db)):
+def delete_group(group_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     deleted = crud.delete_group(db, group_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Group not found")
     return {"ok": True}
 
 @app.post("/api/groups/{group_id}/students", response_model=schemas.Group)
-def add_students_to_group(group_id: int, request: schemas.GroupStudentAdd, db: Session = Depends(get_db)):
+def add_students_to_group(group_id: int, request: schemas.GroupStudentAdd, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     group = crud.add_students_to_group(db, group_id, request.student_ids)
     if not group:
         raise HTTPException(status_code=404, detail="Group not found")
     return group
 
 @app.post("/api/groups/{group_id}/conduct-lesson", response_model=schemas.Group)
-def conduct_lesson(group_id: int, db: Session = Depends(get_db)):
+def conduct_lesson(group_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     grp = crud.conduct_group_lesson(db, group_id)
     if not grp:
         raise HTTPException(status_code=404, detail="Group not found")
     return grp
 
 @app.post("/api/groups/{group_id}/revert-lesson", response_model=schemas.Group)
-def revert_lesson(group_id: int, db: Session = Depends(get_db)):
+def revert_lesson(group_id: int, db: Session = Depends(get_db), _admin: str = Depends(require_crm_admin)):
     grp = crud.revert_group_lesson(db, group_id)
     if not grp:
         raise HTTPException(status_code=404, detail="Group not found")
@@ -509,7 +609,8 @@ def revert_lesson(group_id: int, db: Session = Depends(get_db)):
 def read_debts(
     course_direction: Optional[str] = None,
     search: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     return crud.get_debtors(db, course_direction=course_direction, search=search)
 
@@ -518,55 +619,53 @@ def read_lesson_edit_history(
     entity_type: Optional[str] = None,
     entity_id: Optional[int] = None,
     limit: int = 50,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _admin: str = Depends(require_crm_admin)
 ):
     return crud.get_lesson_edit_history(db, entity_type=entity_type, entity_id=entity_id, limit=limit)
-
-@app.post("/api/reset-demo-data")
-def reset_demo_data_endpoint():
-    seed.seed(force_reset=True)
-    return {"ok": True, "message": "Demo data reset and seeded successfully"}
 
 # ============
 # Public Website Content (Admin Panel)
 # ============
 import json
-import base64
-from fastapi import Request, Body
+from fastapi import Body
 from fastapi.responses import JSONResponse, Response
 import site_defaults
 
-ADMIN_TOKEN = "fake-jwt-token-123"
-SITE_ADMIN_TOKEN = "site-admin-token-789"
 MAX_IMAGE_BYTES = 4 * 1024 * 1024
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
 def require_admin(request: Request):
-    auth = request.headers.get("authorization", "")
-    token = auth[7:] if auth.lower().startswith("bearer ") else auth
-    if token not in (ADMIN_TOKEN, SITE_ADMIN_TOKEN):
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    return require_site_admin(request)
 
 def _get_site_row(db: Session):
     return db.query(models.SiteContent).filter(models.SiteContent.key == "main").first()
 
 
 @app.post("/api/site-admin/login")
-def site_admin_login(req: schemas.LoginRequest, db: Session = Depends(get_db)):
-    admin = crud.get_admin(db, req.username)
-    if admin and admin.password == req.password:
-        return {"token": "site-admin-token-789", "username": admin.username}
+def site_admin_login(request: Request, req: schemas.LoginRequest, db: Session = Depends(get_db)):
+    _check_rate_limit(request)
+    if req.username == SITE_ADMIN_USERNAME and not req.username.startswith("__"):
+        admin = crud.get_admin(db, SITE_ADMIN_USERNAME)
+        if admin and crud.verify_password(req.password, admin.password):
+            _clear_login_attempts(request)
+            return {"token": create_auth_token(SITE_ADMIN_USERNAME, "site"), "username": SITE_ADMIN_USERNAME}
+    _record_failed_login(request)
     raise HTTPException(status_code=401, detail="Սխալ մուտքանուն կամ գաղտնաբառ")
+
+@app.get("/api/site-admin/verify")
+def verify_site_session(_admin: str = Depends(require_site_admin)):
+    return {"ok": True, "username": _admin}
 
 @app.put("/api/site-admin/password")
 def change_site_admin_password(request: Request, req: schemas.PasswordChange, db: Session = Depends(get_db)):
-    require_admin(request)
-    admin = crud.get_admin(db, "siteadmin")
+    require_site_admin(request)
+    admin = crud.get_admin(db, SITE_ADMIN_USERNAME)
     if not admin:
-        admin = crud.create_admin(db, "siteadmin", "siteadmin123")
-    if admin.password != req.current_password:
+        admin = crud.create_admin(db, SITE_ADMIN_USERNAME, INITIAL_PASSWORD_HASH)
+    if not crud.verify_password(req.current_password, admin.password):
         raise HTTPException(status_code=400, detail="Սխալ ընթացիկ գաղտնաբառ")
-    crud.update_admin_password(db, "siteadmin", req.new_password)
+    crud.update_admin_password(db, SITE_ADMIN_USERNAME, req.new_password)
     return {"ok": True}
 
 def _clean_site_data(d: dict) -> dict:
