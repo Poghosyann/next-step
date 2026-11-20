@@ -93,7 +93,8 @@ img {
 }
 
 .section-title.text-center::after,
-.text-center .section-title::after {
+.text-center .section-title::after,
+.faq-header .section-title::after {
     left: 50%;
     transform: translateX(-50%);
 }
