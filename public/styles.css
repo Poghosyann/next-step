@@ -846,13 +846,12 @@ img {
     padding: 0 30px;
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease-out;
+    transition: max-height 0.35s ease, padding 0.35s ease;
     background: var(--white);
 }
 
 .accordion-item.active .accordion-body {
     padding: 24px 30px;
-    max-height: none;
     border-top: 1px solid var(--border);
 }
 
