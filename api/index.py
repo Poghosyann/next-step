@@ -94,10 +94,10 @@ def init_db_if_needed():
     global _db_initialized
     if not _db_initialized:
         try:
-            # Fast path for serverless cold starts: check if schema v8 is already initialized
+            # Fast path for serverless cold starts: check if schema v9 is already initialized
             db_check = SessionLocal()
             try:
-                if crud.get_admin(db_check, "__schema_v8_security_ready__"):
+                if crud.get_admin(db_check, "__schema_v9_clean_crm_ready__"):
                     _db_initialized = True
                     return
             except Exception:
@@ -163,10 +163,6 @@ def init_db_if_needed():
                 print("Column add error:", me)
 
             models.Base.metadata.create_all(bind=engine)
-            try:
-                seed.seed()
-            except Exception as e:
-                print("Seed error:", e)
             db = SessionLocal()
             try:
                 if not crud.get_admin(db, "__schema_v8_security_ready__"):
@@ -181,92 +177,30 @@ def init_db_if_needed():
                             db.commit()
                         else:
                             crud.create_admin(db, uname, INITIAL_PASSWORD_HASH)
+                    crud.create_admin(db, "__schema_v8_security_ready__", "done")
                 else:
                     if not crud.get_admin(db, CRM_ADMIN_USERNAME):
                         crud.create_admin(db, CRM_ADMIN_USERNAME, INITIAL_PASSWORD_HASH)
                     if not crud.get_admin(db, SITE_ADMIN_USERNAME):
                         crud.create_admin(db, SITE_ADMIN_USERNAME, INITIAL_PASSWORD_HASH)
-                # Normalize legacy student statuses without touching "Անորոշ"
-                try:
-                    db.query(models.Student).filter(models.Student.status.ilike("%ընթացիկ%")).update({models.Student.status: "Ընթացիկ"}, synchronize_session=False)
-                    db.query(models.Student).filter(models.Student.status.ilike("%ավարտ%")).update({models.Student.status: "Արխիվ"}, synchronize_session=False)
-                    db.query(models.Student).filter(
-                        models.Student.status.ilike("%նոր%"),
-                        ~models.Student.status.ilike("%անորոշ%")
-                    ).update({models.Student.status: "Նոր"}, synchronize_session=False)
-                    db.query(models.Group).update({models.Group.name: ""}, synchronize_session=False)
-                    # Normalize empty string emails to None
-                    db.query(models.Student).filter(models.Student.email == "").update({models.Student.email: None}, synchronize_session=False)
-                    # Populate sample urgent notes & preferences once if none exist yet
-                    has_urgent = db.query(models.Student).filter(
-                        models.Student.urgent_notes != None,
-                        models.Student.urgent_notes != ""
-                    ).count()
-                    if has_urgent == 0:
-                        recent_sts = db.query(models.Student).order_by(models.Student.id.desc()).limit(8).all()
-                        sample_urgent = [
-                            ("Follow Up tomorrow", "Ցանկանում է միանալ երեկոյան խմբին", "https://instagram.com/lilia_mkh", "Երկ, Չոր", "18:30 - 20:30"),
-                            ("Զանգահարել երկուշաբթի ժամը 14:00", "Հետաքրքրված է եկամտային հարկի վերադարձով", "https://facebook.com/arman.qocharyan", "Երեք, Հինգ", "19:00 - 21:00"),
-                            ("Սպասում է պայմանագրին", "Ուղարկել պայմանագրի օրինակը էլ․ փոստին", "https://t.me/monika_sed", "Երկ, Չոր", "11:00 - 13:00"),
-                            ("Follow Up tomorrow", "Խնդրել է զանգահարել աշխատանքային ժամից հետո", "https://instagram.com/gagik_antonyan", "Երեք, Հինգ", "18:30 - 20:30"),
-                        ]
-                        for idx_u, st_u in enumerate(recent_sts[:len(sample_urgent)]):
-                            u_note, c_note, s_link, p_sched, p_time = sample_urgent[idx_u]
-                            st_u.urgent_notes = u_note
-                            st_u.comment = c_note
-                            st_u.social_link = s_link
-                            st_u.preferred_schedule = p_sched
-                            st_u.preferred_time = p_time
 
-                    # One-time migration: 2 lessons per week & 8 lessons per monthly fee
-                    if not crud.get_admin(db, "__migrated_8_lessons_2_days__"):
-                        db.query(models.Group).filter(models.Group.days == "Երկ, Չոր, Ուրբ").update(
-                            {models.Group.days: "Երկ., Չրք."}, synchronize_session=False
-                        )
-                        db.query(models.Group).filter(models.Group.days == "Երեք, Հինգ, Շաբ").update(
-                            {models.Group.days: "Երք., Հնգ."}, synchronize_session=False
-                        )
-                        db.query(models.Student).filter(models.Student.preferred_schedule == "Երկ, Չոր, Ուրբ").update(
-                            {models.Student.preferred_schedule: "Երկ, Չոր"}, synchronize_session=False
-                        )
-                        db.query(models.Student).filter(models.Student.preferred_schedule == "Երեք, Հինգ, Շաբ").update(
-                            {models.Student.preferred_schedule: "Երեք, Հինգ"}, synchronize_session=False
-                        )
-                        db.query(models.Student).filter(
-                            models.Student.status == "Արխիվ",
-                            models.Student.custom_lessons_attended == 24
-                        ).update(
-                            {models.Student.custom_lessons_attended: 16}, synchronize_session=False
-                        )
-                        # Scale seeded groups' conducted_lessons from 12-lesson/month scale to 8-lesson/month scale
-                        lesson_scale_map = {22: 14, 18: 12, 15: 10, 14: 10, 11: 7, 9: 6, 7: 5, 5: 4, 3: 2}
-                        for grp_item in db.query(models.Group).all():
-                            if grp_item.conducted_lessons in lesson_scale_map:
-                                new_cond = lesson_scale_map[grp_item.conducted_lessons]
-                                grp_item.conducted_lessons = new_cond
-                                active_h = db.query(models.GroupInstructorHistory).filter(
-                                    models.GroupInstructorHistory.group_id == grp_item.id,
-                                    models.GroupInstructorHistory.unassigned_date == None
-                                ).first()
-                                if active_h:
-                                    if (active_h.start_lesson or 0) > new_cond:
-                                        active_h.start_lesson = max(0, new_cond - 4)
-                                    active_h.lessons_taught = max(0, new_cond - (active_h.start_lesson or 0))
-                        crud.create_admin(db, "__migrated_8_lessons_2_days__", "done")
-
-                    # Remove Sunday ("Կիր." / "Կիրակի") from group days and student preferred schedules
-                    db.query(models.Group).filter(models.Group.days.ilike("%Կիր%")).update(
-                        {models.Group.days: "Հնգ., Շբթ."}, synchronize_session=False
-                    )
-                    db.query(models.Student).filter(models.Student.preferred_schedule.ilike("%Կիր%")).update(
-                        {models.Student.preferred_schedule: "Հինգ, Շաբ"}, synchronize_session=False
-                    )
-
-                    if not crud.get_admin(db, "__schema_v8_security_ready__"):
-                        crud.create_admin(db, "__schema_v8_security_ready__", "done")
-                    db.commit()
-                except Exception as ne:
-                    print("Status normalize error:", ne)
+                # One-time clean reset of test CRM data (students, groups, instructors, payments, lessons)
+                if not crud.get_admin(db, "__schema_v9_clean_crm_ready__"):
+                    try:
+                        db.query(models.Payment).delete(synchronize_session=False)
+                        db.query(models.GroupLesson).delete(synchronize_session=False)
+                        db.query(models.GroupInstructorHistory).delete(synchronize_session=False)
+                        db.query(models.LessonEditHistory).delete(synchronize_session=False)
+                        db.query(models.StudentDailySnapshot).delete(synchronize_session=False)
+                        db.execute(models.group_student_table.delete())
+                        db.query(models.Group).delete(synchronize_session=False)
+                        db.query(models.Student).delete(synchronize_session=False)
+                        db.query(models.Instructor).delete(synchronize_session=False)
+                        crud.create_admin(db, "__schema_v9_clean_crm_ready__", "done")
+                        db.commit()
+                    except Exception as ce:
+                        db.rollback()
+                        print("Clean CRM data error:", ce)
             except Exception as e:
                 print("Admin create error:", e)
             finally:
