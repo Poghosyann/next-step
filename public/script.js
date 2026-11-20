@@ -489,7 +489,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!isActive) {
                 item.classList.add('active');
                 const body = $('.accordion-body', item);
-                if (body) body.style.maxHeight = body.scrollHeight + 'px';
+                if (body) {
+                    body.style.maxHeight = (body.scrollHeight + 60) + 'px';
+                    setTimeout(() => {
+                        if (item.classList.contains('active')) {
+                            body.style.maxHeight = 'none';
+                        }
+                    }, 320);
+                }
             }
         }
 

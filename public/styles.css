@@ -92,7 +92,8 @@ img {
     border-radius: 2px;
 }
 
-.section-title.text-center::after {
+.section-title.text-center::after,
+.text-center .section-title::after {
     left: 50%;
     transform: translateX(-50%);
 }
@@ -636,14 +637,16 @@ img {
 
 .instructor-photo {
     position: relative;
+    width: 100%;
     border-radius: var(--radius-md);
     overflow: hidden;
 }
 
 .instructor-photo img {
     width: 100%;
-    height: 500px;
+    height: 280px;
     object-fit: cover;
+    object-position: top center;
     position: relative;
     z-index: 2;
     border-radius: var(--radius-md);
@@ -843,13 +846,20 @@ img {
     padding: 0 30px;
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease-out, padding 0.3s ease;
+    transition: max-height 0.3s ease-out;
     background: var(--white);
 }
 
 .accordion-item.active .accordion-body {
     padding: 24px 30px;
+    max-height: none;
     border-top: 1px solid var(--border);
+}
+
+.accordion-body p {
+    white-space: pre-line;
+    line-height: 1.7;
+    margin: 0;
 }
 
 /* ===== CONTACT SECTION ===== */
@@ -1190,12 +1200,17 @@ img {
 }
 
 .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 28px;
 }
 
 .gallery-item {
+    flex: 0 1 calc(33.333% - 19px);
+    min-width: 280px;
+    max-width: 380px;
+    width: 100%;
     border-radius: var(--radius-md);
     overflow: hidden;
     box-shadow: var(--shadow-sm);
@@ -1256,10 +1271,12 @@ img {
 .gallery-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.25) 60%, transparent 100%);
+    background: linear-gradient(to top, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.35) 60%, rgba(15, 23, 42, 0.15) 100%);
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
     padding: 22px;
     color: var(--white);
     transition: var(--transition);
@@ -1416,27 +1433,59 @@ img {
 html.cms-loading body { opacity: 0; }
 body { transition: opacity .25s ease; }
 
+#instructor .container {
+    max-width: 1320px;
+}
+
 .instructors-grid {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 40px;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 24px;
+    align-items: stretch;
 }
 .instructors-grid .instructor-box {
     margin: 0;
-    flex: 1 1 320px;
-    max-width: 500px;
-    padding: 40px;
+    max-width: none;
+    width: 100%;
+    padding: 24px 20px;
+    gap: 16px;
+}
+.instructors-grid .instructor-photo {
+    width: 100%;
+}
+.instructors-grid .instructor-photo img {
+    height: 280px;
+    object-fit: cover;
+    object-position: top center;
+}
+.instructors-grid .instructor-name {
+    font-size: 1.35rem;
+    margin-bottom: 6px;
 }
 .instructor-role {
     font-weight: 600;
+    font-size: 0.95rem;
     color: var(--text-muted);
-    margin-top: -12px;
+    margin-top: 0;
+    margin-bottom: 10px !important;
 }
 .instructor-bio {
-    font-size: 1rem;
-    line-height: 1.7;
+    font-size: 0.93rem !important;
+    line-height: 1.65;
     white-space: pre-line;
+    margin-bottom: 0 !important;
+}
+
+@media (max-width: 1100px) {
+    .instructors-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .instructors-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .reviews-grid { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
